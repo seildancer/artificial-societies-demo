@@ -46,9 +46,18 @@ export function getView(s: State) {
   }
   const metrics = Object.fromEntries(Object.keys(fromMetrics).map(k => [k, Math.round(fromMetrics[k as keyof Metrics] + (toMetrics[k as keyof Metrics] - fromMetrics[k as keyof Metrics]) * progress)])) as unknown as Metrics;
   const choosing = s.step === 'response' && !s.running;
+  // Derive the record from story time so pausing, rewinding and trying another
+  // response preserve the original rumour without retaining discarded reactions.
+  const history = s.step === 'identity' ? [] : s.step === 'society'
+    ? storyEvents('society', s.identity).filter(e => e.at <= s.elapsed).map(e => ({ ...e, phase: 'society' as const }))
+    : [
+      ...storyEvents('rumour', s.identity).filter(e => e.at <= (s.step === 'rumour' ? s.elapsed : s.rumourTime)).map(e => ({ ...e, phase: 'rumour' as const })),
+      ...((s.step === 'response' && s.running) || s.step === 'outcome'
+        ? storyEvents('response', s.identity, s.strategy).filter(e => e.at <= s.elapsed).map(e => ({ ...e, phase: 'response' as const })) : []),
+    ];
   const priorPosts = Math.floor(s.societyTime * 1.2);
   const rumourPosts = Math.floor((choosing ? s.elapsed : s.rumourTime) * 8.4);
   const posts = s.step === 'society' ? Math.floor(s.elapsed * 1.2) : s.step === 'rumour' ? priorPosts + Math.floor(s.elapsed * 8.4) : priorPosts + rumourPosts + (choosing ? 0 : Math.floor(s.elapsed * (s.strategy === 'silence' ? 1.5 : 4.8)));
   const activity = { posts, reactions: posts * 4, reposts: Math.floor(posts * 0.7), conversations: Math.floor(posts / 5) };
-  return { active, from, to, progress, metrics, outcome, activity, genesis: s.step === 'society' ? clamp(s.elapsed / 2.5) : 1 };
+  return { active, history, from, to, progress, metrics, outcome, activity, genesis: s.step === 'society' ? clamp(s.elapsed / 2.5) : 1 };
 }

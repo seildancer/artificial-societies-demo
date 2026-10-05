@@ -3,6 +3,7 @@ import { identities, outcomes, type Strategy } from './data';
 import { GraphStage } from './GraphStage';
 import { IdentityPortrait } from './IdentityPortrait';
 import { Brand } from './Brand';
+import { EventHistory } from './EventHistory';
 import { getView, initialState, reducer, type Step } from './simulation';
 
 const steps: Step[] = ['identity', 'society', 'rumour', 'response', 'outcome'];
@@ -22,8 +23,6 @@ export function App() {
   const societyReady = state.step === 'society' && state.elapsed >= 10.8;
   const rumourReady = state.step === 'rumour' && state.elapsed >= 14.6;
   const choosing = state.step === 'response' && !state.running;
-  const genesis = state.step === 'society' && state.elapsed < 2.6;
-  const active = (state.step === 'society' && !societyReady) || (state.step === 'rumour' && !rumourReady) || state.running;
 
   useEffect(() => {
     let raf = 0, previous = performance.now(), accumulated = 0;
@@ -86,13 +85,15 @@ export function App() {
           </div>
         </aside>}
 
+        {state.step !== 'outcome' && <EventHistory state={state} paused={paused} reduced={reduced} />}
+
         <section className={`interaction ${choosing ? 'response-choices' : ''} ${state.step === 'outcome' ? 'outcome-interaction' : ''}`} ref={panel} tabIndex={-1} aria-label={`${stepNames[stepIndex]} controls`}>
           {state.step === 'society' && <>
-            <div className="interaction-copy"><h2>{genesis ? 'Building the audience…' : societyReady ? 'Audience baseline established.' : 'Observing audience activity.'}</h2></div>
+            <div className="interaction-copy"><h2>{societyReady ? 'Your audience is listening.' : 'Good press travels.'}</h2><p>Meet the voices around you before introducing a rumour.</p></div>
             <div className="actions"><button className="text-button" onClick={back}>← Change identity</button><button className="primary danger-button" disabled={!societyReady} onClick={() => { setPaused(false); dispatch({ type: 'rumour' }); }}>Introduce a rumour<Arrow /></button></div>
           </>}
           {state.step === 'rumour' && <>
-            <div className="interaction-copy"><h2>{rumourReady ? 'Public sentiment has shifted.' : state.elapsed < 6.8 ? 'A rumour enters the network.' : 'The rumour reaches new audiences.'}</h2></div>
+            <div className="interaction-copy"><h2>{rumourReady ? 'Four moments. A different story.' : 'Watch a rumour become a reputation.'}</h2><p>{rumourReady ? 'Review how the story changed, then decide what to say.' : 'Follow the key moments as people pass the story on.'}</p></div>
             <div className="actions"><button className="text-button" onClick={back}>← Before the rumour</button><button className="primary" disabled={!rumourReady} onClick={() => { setPaused(false); dispatch({ type: 'respond' }); }}>Choose a response<Arrow /></button></div>
           </>}
           {choosing && <>
@@ -105,7 +106,6 @@ export function App() {
           {state.step === 'outcome' && <>
             <div className="interaction-copy"><h2>{view.outcome!.insight}</h2></div><div className="actions"><button className="text-button" onClick={restart}>Start over</button><button className="primary" onClick={back}>Try another response<Arrow /></button></div>
           </>}
-          {active && <div className="timeline-track" role="progressbar" aria-label="Sequence progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(state.elapsed / (state.step === 'society' ? 10.8 : state.step === 'rumour' ? 14.6 : 14.4) * 100))}><span style={{ width: `${Math.min(100, state.elapsed / (state.step === 'society' ? 10.8 : state.step === 'rumour' ? 14.6 : 14.4) * 100)}%` }} /></div>}
         </section>
 
         {state.step === 'outcome' && <aside className="outcome-panel" aria-label="Response outcome">

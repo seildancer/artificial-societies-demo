@@ -30,7 +30,7 @@ Publish the contents of `dist/` to any static host. Relative asset paths support
 - **Response:** silence, a short denial, an apology with clarification, or a full statement. Each plays a 14-second sequence of divergent fan, journalist and critic reactions.
 - **Outcome:** sentiment, support, hostility, belief and reach; a tradeoff for every strategy; a comparison table after trying two or more responses.
 
-The progress indicator is informational. Back only moves one step; the explicit start-over action returns to identity. Returning from an outcome preserves the original rumour snapshot and previous experiment results. Pause freezes the narrative and ambient activity. Reduced motion respects the operating-system preference and can also be toggled in the footer.
+Key posts accumulate in a side timeline, recording the source claim, embellishment, headline and character judgement alongside their effects. The full rumour history stays available while choosing a response, and new reactions append during the response sequence. The timeline follows new moments until the user scrolls up to read; a button returns to the latest activity. On mobile it sits beneath the network. Back only moves one step; the explicit start-over action returns to identity. Returning from an outcome preserves the original rumour snapshot and previous experiment results. Pause freezes the narrative and ambient activity. Reduced motion respects the operating-system preference and can also be toggled in the footer.
 
 ## Implementation
 
@@ -44,6 +44,8 @@ Interface copy presents the demo as a reputation simulation for public and inves
 | `src/simulation.ts` | Explicit transition reducer, time-based phases, sequential guards and saved rewind times |
 | `src/GraphStage.tsx` | Persistent Three.js scene, instanced nodes, reusable edge buffers, camera choreography, pulses, hover and highlight overlays |
 | `src/App.tsx` | Story controls, metrics, response selection, results and comparison |
+| `src/EventHistory.tsx` | Persistent chronological posts, interpretation changes and reading-aware scrolling |
+| `src/history.css` | Side timeline and mobile story layout |
 | `src/style.css` | Tabloid Noir palette, responsive layout and motion preferences |
 
 React handles the interface at a limited update rate; Three.js renders independently with `requestAnimationFrame`. Perspective-projected nodes have real x/y/z coordinates. Camera targets are scripted and there are no orbit controls. Sparse local relationships and temporary travelling edges avoid a permanent dense network. If WebGL creation fails, the same story uses a Canvas 2D perspective fallback.

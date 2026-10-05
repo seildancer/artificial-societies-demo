@@ -4,7 +4,6 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { PostAvatar, postName } from './PostAvatar';
 import { clusters, hash, identities, nodes } from './data';
 import { getView, type State } from './simulation';
 import { IdentityPortrait } from './IdentityPortrait';
@@ -28,7 +27,6 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
   const host = useRef<HTMLDivElement>(null);
   const resetView = useRef(() => {});
   const centre = useRef<HTMLDivElement>(null);
-  const highlight = useRef<HTMLElement>(null);
   const clusterLabels = useRef<(HTMLDivElement | null)[]>([]);
   const live = useRef({ state, reduced, paused });
   live.current = { state, reduced, paused };
@@ -36,12 +34,6 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
   const [fallback, setFallback] = useState(false);
   const view = getView(state);
   const event = view.active;
-  const [shownEvent, setShownEvent] = useState(event);
-  useEffect(() => {
-    if (event) { setShownEvent(event); return; }
-    const timer = window.setTimeout(() => setShownEvent(undefined), reduced ? 0 : 220);
-    return () => window.clearTimeout(timer);
-  }, [event?.at, event?.text, state.step, reduced]);
 
   useEffect(() => {
     const container = host.current!;
@@ -343,15 +335,6 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         const pos = project(new THREE.Vector3(c.x * xScale, c.y + (c.name === 'Fans' || c.name === 'Public' ? -1.7 : 1.35), c.z * 2.5).applyQuaternion(rotation));
         if (clusterLabels.current[i]) { clusterLabels.current[i]!.style.transform = `translate(${pos.x}px, ${pos.y}px)`; clusterLabels.current[i]!.style.opacity = active ? '0.25' : String(isIdentity ? 0.6 : 0.5 + v.genesis * 0.5); }
       });
-      if (highlight.current && focus) {
-        const pos = project(focus);
-        const cardWidth = Math.min(310, width - 32);
-        const rightSpace = width - pos.x;
-        const x = small ? (width - cardWidth) / 2 : Math.max(18, Math.min(width - cardWidth - 18, rightSpace > cardWidth + 30 ? pos.x + 28 : pos.x - cardWidth - 28));
-        const cardHeight = highlight.current.offsetHeight;
-        const y = small ? Math.max(12, height - cardHeight - 44) : Math.max(18, Math.min(height - cardHeight - 44, pos.y - 90));
-        highlight.current.style.left = `${x}px`; highlight.current.style.top = `${y}px`;
-      }
       if (composer && bloom?.enabled) composer.render(); else if (renderer) renderer.render(scene, camera);
       raf = requestAnimationFrame(render);
     }
@@ -370,12 +353,6 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
   return <div ref={host} className={`graph ${state.step === 'identity' ? 'graph-intro' : ''}`} role="group" tabIndex={0} aria-label={`3D social network: ${reduced ? 229 : state.step === 'identity' ? 42 : Math.min(229, 42 + Math.floor(view.genesis * 187))} personas. ${view.metrics.supportive}% supportive, ${view.metrics.hostile}% hostile.`} data-renderer={fallback ? 'canvas-fallback' : 'webgl'}>
     <div ref={centre} className="celebrity-anchor"><div className="celebrity-mark" role="img" aria-label={portraitIndex < 0 ? 'You, at the centre of the society' : `You as the ${identities[portraitIndex].title.toLowerCase()}`}><IdentityPortrait index={portraitIndex} /></div></div>
     {clusters.map((c, i) => <div key={c.name} ref={el => { clusterLabels.current[i] = el; }} className="cluster-label">{c.name}</div>)}
-    {shownEvent && <article ref={highlight} key={`${state.step}-${shownEvent.at}`} className={`highlight ${!event ? 'post-leaving' : ''} ${state.step === 'rumour' ? 'highlight-danger' : ''}`} aria-live="polite">
-      <div className="post-context"><span className="live-dot" />{shownEvent.kind}<span>SIMULATED POST</span></div>
-      <div className="highlight-person"><PostAvatar node={shownEvent.node} identity={portraitIndex} /><div><strong>{shownEvent.node === -1 ? 'You' : postName(shownEvent.node)}</strong><small>{shownEvent.node === -1 ? 'Official account' : nodes[shownEvent.node].handle} · now</small></div><span className="post-menu" aria-hidden="true">···</span></div>
-      <p>{shownEvent.text}</p><div className="reaction"><span aria-hidden="true">↻ </span>{shownEvent.reaction}</div>
-      <div className="post-impact">{shownEvent.impact}</div>
-    </article>}
     {hover && !event && <div className="node-tooltip" style={{ left: hover.x, top: hover.y }}>{nodes[hover.id].role}<small>{nodes[hover.id].category} · {view.to[hover.id] > 0 ? 'Supportive' : view.to[hover.id] < 0 ? 'Hostile' : 'Uncertain'} · {nodes[hover.id].influence > .66 ? 'High' : nodes[hover.id].influence > .33 ? 'Medium' : 'Low'} influence</small></div>}
   </div>;
 }
