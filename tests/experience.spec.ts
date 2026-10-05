@@ -49,7 +49,7 @@ test('desktop: genesis, mutations, all four response journeys and comparison', a
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /One rumour/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /You’re famous now.*Can you survive.*a rumour/ })).toBeVisible();
   await expect(page.locator('.graph')).toHaveAttribute('data-renderer', 'webgl');
   await expect(page.locator('.graph')).toHaveCSS('opacity', '1');
   await page.getByRole('button', { name: /Breakout actor/ }).focus();

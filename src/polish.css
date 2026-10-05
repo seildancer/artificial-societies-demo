@@ -1,0 +1,45 @@
+/* A persistent stage lets the camera and surrounding layout travel together. */
+.graph{transition:left 1.15s cubic-bezier(.22,1,.36,1),right 1.15s cubic-bezier(.22,1,.36,1),top 1.15s cubic-bezier(.22,1,.36,1),bottom 1.15s cubic-bezier(.22,1,.36,1);outline:none}
+.graph:focus-visible{outline:1px solid #bba06a77;outline-offset:-3px}
+.graph{isolation:auto}
+.graph canvas{cursor:grab;touch-action:pan-y;mix-blend-mode:screen}
+.identity-portrait{display:block;background-image:url('/images/portraits-v1.png');background-size:300% 300%;background-repeat:no-repeat;border:1px solid #d8c7a430;box-shadow:inset 0 0 0 1px #0002}
+.celebrity-mark{transition:width .8s,height .8s,box-shadow .8s;border-color:#cbb27d;box-shadow:0 0 0 7px #d6a84b08,0 0 55px #d6a84b18}
+.celebrity-mark .identity-portrait{transition:width .8s,height .8s}
+.celebrity-anchor:after{content:'YOU';position:absolute;top:40px;left:0;transform:translateX(-50%);color:#c7b48e;font-size:8px;letter-spacing:2px}
+.cluster-label{transform-origin:center;text-shadow:0 2px 8px #000;letter-spacing:1.8px;font-size:8px}
+.intro-copy{transition:opacity .6s,transform .8s cubic-bezier(.22,1,.36,1)}
+.intro-copy.leaving{transform:translateY(-8px);filter:blur(3px)}
+.interaction-copy,.response-heading,.sentiment,.response-options{animation:panel-arrive .7s cubic-bezier(.22,1,.36,1) both}
+.interaction-copy p{font-size:11px;line-height:1.7;color:#aaa198;margin:9px 0 0}
+.persona-card{transition:border-color .25s,background .25s,transform .4s,box-shadow .4s;box-shadow:0 8px 32px #0001}
+.persona-card:hover{box-shadow:0 14px 32px #0003}
+.persona-text>small{color:#a89f94;font-size:10px;line-height:1.4;font-weight:400}
+.highlight{width:310px;padding:18px;background:linear-gradient(145deg,#262526f5,#171719f5);backdrop-filter:blur(18px);border-radius:8px;border-color:#b8a58440;box-shadow:0 24px 60px #0008,0 1px 0 #ffffff09 inset;animation:post-arrive .48s cubic-bezier(.16,1,.3,1) both}
+.post-context{display:flex;align-items:center;gap:7px;font-size:8px;color:#c6ae83;letter-spacing:.3px;margin-bottom:17px}
+.post-context>span:last-child{margin-left:auto;font-size:6px;letter-spacing:1px;color:#9a9389}
+.highlight-danger .post-context{color:#d898a2}.highlight-danger .live-dot{background:#e36b7c;box-shadow:0 0 12px #e9364a44}
+.highlight-person{gap:10px;margin:0 0 13px}
+.highlight-person strong{display:block;color:#eee7de;font-size:12px;font-weight:500;letter-spacing:.1px}
+.highlight-person small{color:#a89f97;font-size:9px;margin-top:4px}
+.highlight-person .identity-portrait,.publisher-logo{width:38px;height:38px;flex-shrink:0;border-radius:50%}
+.publisher-logo{display:grid;place-items:center;overflow:hidden;border:1px solid #ffffff24;background:#e4dfd5;color:#252526;font-weight:600;font-size:15px;letter-spacing:-1px;box-shadow:0 2px 6px #0003}
+.logo-wire{background:#e1dacd;color:#252b33;letter-spacing:-2px;font-size:14px}
+.logo-wire span{border-top:2px solid currentColor;border-bottom:2px solid currentColor;line-height:1.1;padding:2px 0}
+.logo-daily{background:#813b43;color:#fff1e0;font-family:Georgia,serif;font-size:25px;font-weight:400}
+.logo-hours{background:#242a43;color:#e9d8b9;font-family:Georgia,serif;font-style:italic;font-size:24px}
+.logo-tea{background:#a2b8a4;color:#182e25;font-family:Georgia,serif;font-size:25px;font-style:italic}
+.logo-archive{background:#36302b;color:#e9c58a;font-family:Georgia,serif;font-size:15px;letter-spacing:-1px}
+.post-menu{margin-left:auto;align-self:flex-start;font-size:20px;color:#827c77}
+.highlight p{font-size:12px;line-height:1.7;color:#e0dbd4}
+.reaction{font-size:9px;border-color:#ffffff12;color:#aea69b;margin-top:15px;padding-top:12px}
+.post-impact{margin-top:9px;font-size:8px;color:#c5b18d;letter-spacing:.15px}
+.highlight-danger .post-impact{color:#d49aa3}
+.node-tooltip{border-radius:5px;background:#1a1a1eea;backdrop-filter:blur(12px);box-shadow:0 8px 24px #0004}
+.progress li,.progress .step-number{transition:color .5s}
+@keyframes panel-arrive{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes post-arrive{from{opacity:0;transform:translateY(9px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.highlight.post-leaving{animation:post-depart .22s ease forwards}
+@keyframes post-depart{to{opacity:0;transform:translateY(-5px) scale(.99)}}
+@media(max-width:760px){.celebrity-anchor:after{top:30px;font-size:7px}.highlight{padding:15px}.post-context{margin-bottom:12px}.highlight-person .identity-portrait,.publisher-logo{width:33px;height:33px}.highlight p{font-size:11px;line-height:1.6}.post-impact{font-size:8px}.persona-text>small{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.graph,.celebrity-mark,.celebrity-mark .identity-portrait{transition:none}}

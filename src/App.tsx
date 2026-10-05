@@ -56,17 +56,12 @@ export function App() {
   const restart = () => { setPaused(false); dispatch({ type: 'restart' }); };
 
   return <div className={`experience step-${state.step} ${reduced ? 'reduced-motion' : ''}`} data-step={state.step} data-running={state.running} data-selected={state.identity}>
-    <header className="header">
-      <Brand />
-      <ol className="progress" aria-label="Experience progress">{stepNames.map((name, i) => <li key={name} className={i === stepIndex ? 'current' : i < stepIndex ? 'visited' : ''} aria-current={i === stepIndex ? 'step' : undefined}><span className="step-number">0{i + 1}</span><span className="step-name">{name}</span></li>)}</ol>
-    </header>
-
     <main className="stage">
       <GraphStage state={state} reduced={reduced} paused={paused} portraitIndex={state.step === 'identity' && !state.selecting ? previewIdentity : state.identity} />
       {state.step === 'identity' ? <>
         <div className={`intro-copy ${state.selecting ? 'leaving' : ''}`}>
-          <div className="eyebrow"><span className="gold-dash" /> HOLLYWOOD RUMOUR</div>
-          <h1>One rumour.<br /><span>How would you<br />respond?</span></h1>
+          <div className="eyebrow"><span className="gold-dash" /> SIMULATED MEDIA INDUSTRY</div>
+          <h1>You’re famous now.<span>Can you survive<br />a rumour?</span></h1>
           <div className="powered-by"><span>Powered by</span><Brand /></div>
         </div>
         <section className={`identity-panel ${state.selecting ? 'selecting' : ''}`} aria-label="Choose your identity">
