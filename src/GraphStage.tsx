@@ -384,7 +384,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         pulse.material.color.copy(activityColor);
         pulse.material.opacity = reduce || births[order[rank]] < 0.99 || isIdentity || v.genesis < 1 ? 0 : (1 - frac) * 0.14 * (active ? 0.5 : 1);
       });
-      ring.scale.setScalar(!reduce && s.running && s.elapsed < 3 && s.strategy !== 'silence' ? 1 + (s.elapsed % 1) * 9 : 1.5 + (reduce ? 0 : Math.sin(t) * 0.08));
+      ring.scale.setScalar(!reduce && s.running && s.elapsed < 3 ? 1 + (s.elapsed % 1) * 9 : 1.5 + (reduce ? 0 : Math.sin(t) * 0.08));
       ring.quaternion.copy(camera.quaternion);
       const cp = project(origin);
       if (centre.current) centre.current.style.transform = `translate(${cp.x}px, ${cp.y}px)`;
@@ -410,7 +410,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
   return <div ref={host} className={`graph ${state.step === 'identity' ? 'graph-intro' : ''}`} role="group" tabIndex={0} aria-label={`3D social network: ${view.personaCount} personas. ${view.metrics.supportive}% supportive, ${view.metrics.hostile}% hostile.`} data-genesis={state.step === 'society' && view.genesis < 1 ? 'creating' : 'complete'} data-renderer={fallback ? 'canvas-fallback' : 'webgl'}>
     {ambientLayer}
     <div ref={centre} className="celebrity-anchor"><div className="celebrity-mark" role="img" aria-label={portraitIndex < 0 ? 'You, at the centre of the society' : `You as the ${identities[portraitIndex].title.toLowerCase()}`}><IdentityPortrait index={portraitIndex} /></div></div>
-    {event && <div ref={activePin} className={`node-avatar-pin highlight-avatar-pin ${state.step === 'rumour' ? 'pin-danger' : ''}`} data-node={event.node} role="img" aria-label={`${event.node === -1 ? 'You' : postName(event.node)}, active voice in the network`}>
+    {event && <div ref={activePin} className={`node-avatar-pin highlight-avatar-pin ${state.step === 'rumour' ? 'pin-danger' : ''}`} data-node={event.node} role="img" aria-label={`${event.author ?? (event.node === -1 ? 'You' : postName(event.node))}, active voice in the network`}>
       <div className="node-avatar-pin-mark"><PostAvatar node={event.node} identity={state.identity} /></div>
     </div>}
     {clusters.map((c, i) => <div key={c.name} ref={el => { clusterLabels.current[i] = el; }} className="cluster-label">{c.name}</div>)}

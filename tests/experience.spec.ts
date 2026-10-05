@@ -1,7 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
-import { baselineSnapshot, crisisSnapshot, nodes, outcomes, responseSnapshots } from '../src/data';
+import { baselineSnapshot, nodes, snapshot, identities } from '../src/data';
 import { getView, initialState, reducer } from '../src/simulation';
 import { birthOrder, createdPersonaCount, GENESIS_DURATION, personaBirth, SOCIETY_READY_AT } from '../src/genesis';
+
+const outcomes = identities[0].outcomes;
+const crisisSnapshot = snapshot(identities[0].crisis, 'crisis');
+const responseSnapshots = Object.fromEntries(outcomes.map(o => [o.id, snapshot(o.metrics, o.id)]));
 
 const visibleAmbientPins = (page: Page) => page.locator('.ambient-avatar-pin').evaluateAll(els => els
   .filter(el => Number((el as HTMLElement).style.opacity) > 0.05 && getComputedStyle(el).visibility === 'visible')
@@ -11,7 +15,7 @@ test('all timelines restore the same population, sentiment and snapshot time', (
   expect(nodes).toHaveLength(229);
   expect(new Set(nodes.map(n => n.id)).size).toBe(229);
   expect(new Set(nodes.map(n => n.z)).size).toBeGreaterThan(200);
-  let s = reducer(initialState, { type: 'identity', index: 1 });
+  let s = reducer(initialState, { type: 'identity', index: 0 });
   s = reducer(s, { type: 'enter' });
   expect(s.step).toBe('society');
   expect(getView(s).history).toHaveLength(0);
@@ -57,7 +61,7 @@ test('all timelines restore the same population, sentiment and snapshot time', (
     expect(s.running).toBe(false);
     expect(getView(s).history).toEqual(rumourHistory);
   }
-  expect(s.history).toHaveLength(4);
+  expect(s.history).toHaveLength(3);
   s = reducer(s, { type: 'back' });
   expect(s.elapsed).toBe(rumour.elapsed);
   expect(getView(s).to).toEqual(crisisSnapshot);
@@ -88,7 +92,7 @@ test('genesis creates a varied population before any audience activity', () => {
 
 test('genesis counts, previews and pins follow pause, live transition and restart', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Breakout actor/ }).click();
+  await page.getByRole('button', { name: /A-list actor/ }).click();
   await expect(page.locator('.history-heading h2')).toHaveText('Persona genesis');
   await expect(page.getByTestId('persona-count')).toHaveText('0');
   await expect(page.getByRole('progressbar', { name: 'Personas created' })).toHaveAttribute('aria-valuenow', '0');
@@ -117,12 +121,12 @@ test('genesis counts, previews and pins follow pause, live transition and restar
   await page.screenshot({ path: 'test-results/society-live-desktop.png' });
   await page.getByRole('button', { name: 'Change identity' }).click();
   await expect.poll(() => visibleAmbientPins(page)).toEqual([]);
-  await page.getByRole('button', { name: /Pop star/ }).click();
+  await page.getByRole('button', { name: /Global pop star/ }).click();
   await expect(page.getByTestId('persona-count')).toHaveText('0');
   expect(await visibleAmbientPins(page)).toEqual([]);
 });
 
-test('desktop: genesis, mutations, all four response journeys and comparison', async ({ page }) => {
+test('desktop: genesis, mutations, all three response journeys and comparison', async ({ page }) => {
   // This journey plays genesis, two rumour passes and five responses in real time.
   test.setTimeout(210_000);
   // Keep the history scrollable after removing its explanatory header and footer.
@@ -133,12 +137,12 @@ test('desktop: genesis, mutations, all four response journeys and comparison', a
   await expect(page.getByRole('heading', { name: /You’re famous now.*Can you survive.*a rumour/ })).toBeVisible();
   await expect(page.locator('.graph')).toHaveAttribute('data-renderer', 'webgl');
   await expect(page.locator('.graph')).toHaveCSS('opacity', '1');
-  await page.getByRole('button', { name: /Breakout actor/ }).focus();
-  await expect(page.getByRole('img', { name: 'You as the breakout actor' })).toBeVisible();
+  await page.getByRole('button', { name: /A-list actor/ }).focus();
+  await expect(page.getByRole('img', { name: 'You as the a-list actor' })).toBeVisible();
   await page.screenshot({ path: 'test-results/identity-desktop.png' });
-  await page.getByRole('button', { name: /Breakout actor/ }).click();
+  await page.getByRole('button', { name: /A-list actor/ }).click();
   await expect(page.locator('.history-heading h2')).toHaveText('Persona genesis');
-  await expect(page.locator('.event-history')).toContainText('One to watch.');
+  await expect(page.locator('.event-history')).toContainText('A familiar face');
   await expect(page.locator('.highlight-avatar-pin')).toHaveAttribute('data-node', '0');
   await expect(page.locator('.highlight-avatar-pin .logo-wire')).toBeVisible();
   await expect(page.locator('.highlight-avatar-pin')).toHaveCSS('opacity', '1');
@@ -155,56 +159,56 @@ test('desktop: genesis, mutations, all four response journeys and comparison', a
   expect(laterPins).not.toEqual(firstPins);
   await page.screenshot({ path: 'test-results/society-desktop.png' });
   await page.getByRole('button', { name: 'Introduce a rumour' }).click();
-  await expect(page.locator('.event-history')).toContainText('Someone on set needs to talk.');
+  await expect(page.locator('.event-history')).toContainText('Watch the last three seconds.');
   await expect(page.locator('.highlight-avatar-pin')).toHaveAttribute('data-node', '2');
   await expect(page.locator('.highlight-avatar-pin .logo-hours')).toBeVisible();
-  await expect(page.locator('.event-history')).toContainText('stormed off set. Not a great look');
-  await expect(page.locator('.event-history')).toContainText('CHAOS ON SET');
+  await expect(page.locator('.event-history')).toContainText('Can’t say this surprises me.');
+  await expect(page.locator('.event-history')).toContainText('You learn everything about someone');
   await expect(page.locator('.history-event')).toHaveCount(3);
   // Reading the source should keep its position as later moments arrive.
   await page.locator('.history-scroll').evaluate(el => { el.scrollTop = 0; el.dispatchEvent(new Event('scroll')); });
-  await expect(page.locator('.event-history')).toContainText('Impossible to work with.');
+  await expect(page.locator('.event-history')).toContainText('MULTIPLE CREW MEMBERS');
   await expect(page.locator('.history-scroll')).toHaveJSProperty('scrollTop', 0);
   await expect(page.getByRole('button', { name: 'New moment below' })).toBeVisible();
   await page.getByRole('button', { name: 'New moment below' }).click();
   await page.screenshot({ path: 'test-results/rumour-mutation.png' });
-  await expect(page.locator('.event-history')).toContainText('Impossible to work with.');
+  await expect(page.locator('.event-history')).toContainText('MULTIPLE CREW MEMBERS');
   await expect(page.getByRole('button', { name: 'Choose a response' })).toBeEnabled();
   await expect(page.locator('.history-event')).toHaveCount(4);
   await page.screenshot({ path: 'test-results/rumour-history-desktop.png' });
-  await expect(page.locator('.sentiment-key')).toContainText('31% supportive');
+  await expect(page.locator('.sentiment-key')).toContainText('9% supportive');
   await page.getByRole('button', { name: 'Before the rumour' }).click();
   await expect(page.locator('.sentiment-key')).toContainText('72% supportive');
   await expect(page.getByRole('button', { name: 'Introduce a rumour' })).toBeEnabled();
   await page.getByRole('button', { name: 'Introduce a rumour' }).click();
   await page.getByRole('button', { name: 'Choose a response' }).click();
   await expect(page.locator('.history-event')).toHaveCount(4);
-  await expect(page.locator('.event-history')).toContainText('Someone on set needs to talk.');
+  await expect(page.locator('.event-history')).toContainText('Watch the last three seconds.');
   await page.screenshot({ path: 'test-results/response-choices.png' });
   for (const o of outcomes) {
-    await expect(page.locator('.sentiment-key')).toContainText('31% supportive');
+    await expect(page.locator('.sentiment-key')).toContainText('9% supportive');
     await page.getByRole('button', { name: new RegExp(o.title.replace('+', '\\+')) }).click();
     await expect(page.locator('.highlight-avatar-pin')).toHaveAttribute('data-node', '-1');
     await expect(page.locator('.highlight-avatar-pin .portrait-0')).toBeVisible();
-    await expect(page.locator('.event-history')).toContainText(o.reactions[0]);
-    await expect(page.locator('.event-history')).toContainText(o.reactions[1]);
-    await expect(page.locator('.event-history')).toContainText(o.reactions[2]);
+    await expect(page.locator('.event-history')).toContainText(o.reactions[0].text);
+    await expect(page.locator('.event-history')).toContainText(o.reactions[1].text);
+    await expect(page.locator('.event-history')).toContainText(o.reactions[2].text);
     await expect(page.locator('.experience')).toHaveAttribute('data-step', 'outcome');
-    await expect(page.getByRole('heading', { name: o.insight })).toBeVisible();
+    await expect(page.locator('.outcome-interaction').getByRole('heading', { name: o.insight })).toBeVisible();
     await expect(page.getByRole('complementary', { name: 'Response outcome' })).toContainText(`${o.metrics.belief}%`);
     await expect(page.getByRole('complementary', { name: 'Public sentiment' })).toHaveCount(0);
-    await page.getByText('Response analysis').click();
-    await expect(page.locator('.statement-quote')).toBeVisible();
-    await page.getByText('Response analysis').click();
+    await page.locator('.outcome-card.selected-result summary').click();
+    await expect(page.locator('.outcome-card.selected-result .statement-quote')).toBeVisible();
+    await page.locator('.outcome-card.selected-result summary').click();
     await page.screenshot({ path: `test-results/outcome-${o.id}.png` });
     await page.getByRole('button', { name: 'Try another response' }).click();
     await expect(page.locator('.history-event')).toHaveCount(4);
     await expect(page.locator('.experience')).toHaveAttribute('data-step', 'response');
   }
-  await expect(page.getByText('TRIED', { exact: true })).toHaveCount(4);
-  await page.getByRole('button', { name: /No response/ }).click();
+  await expect(page.getByText('TRIED', { exact: true })).toHaveCount(3);
+  await page.getByRole('button', { name: /Defend the context/ }).click();
   await expect(page.locator('.experience')).toHaveAttribute('data-step', 'outcome');
-  await expect(page.locator('.comparison tbody tr')).toHaveCount(4);
+  await expect(page.locator('.outcome-card')).toHaveCount(3);
   await page.getByRole('button', { name: 'Start over' }).click();
   await expect(page.locator('.experience')).toHaveAttribute('data-step', 'identity');
   expect(errors).toEqual([]);
@@ -216,8 +220,8 @@ test('mobile and reduced motion preserve the story and accessible controls', asy
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Motion reduced' })).toHaveAttribute('aria-pressed', 'true');
   await page.screenshot({ path: 'test-results/identity-mobile.png', fullPage: true });
-  await page.getByRole('button', { name: /Pop star/ }).click();
-  await expect(page.getByRole('img', { name: 'You as the pop star' })).toBeVisible();
+  await page.getByRole('button', { name: /Global pop star/ }).click();
+  await expect(page.getByRole('img', { name: 'You as the global pop star' })).toBeVisible();
   await expect(page.locator('.history-heading h2')).toHaveText('Persona genesis');
   await expect(page.locator('.genesis-persona')).toHaveCount(3);
   expect(await visibleAmbientPins(page)).toEqual([]);
@@ -254,17 +258,17 @@ test('mobile and reduced motion preserve the story and accessible controls', asy
   await page.locator('.history-event').first().scrollIntoViewIfNeeded();
   await expect(page.locator('.history-event').first()).toBeInViewport();
   await page.screenshot({ path: 'test-results/choices-mobile.png', fullPage: true });
-  await page.getByRole('button', { name: /Apologise/ }).click();
+  await page.getByRole('button', { name: /Lead with empathy/ }).click();
   await expect(page.locator('.experience')).toHaveAttribute('data-step', 'outcome');
   await page.screenshot({ path: 'test-results/outcome-mobile.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Try another response' }).click();
-  await expect(page.locator('.sentiment-key')).toContainText('31% supportive');
+  await expect(page.locator('.sentiment-key')).toContainText('14% supportive');
   await page.getByRole('button', { name: 'Back to the rumour' }).click();
   await page.getByRole('button', { name: 'Before the rumour' }).click();
   await page.getByRole('button', { name: 'Change identity' }).click();
-  await page.getByRole('button', { name: /Veteran actor/ }).click();
-  await expect(page.getByRole('img', { name: 'You as the veteran actor' })).toBeVisible();
+  await page.getByRole('button', { name: /Actor & studio founder/ }).click();
+  await expect(page.getByRole('img', { name: 'You as the actor & studio founder' })).toBeVisible();
 });
 
 test('narrow mobile keeps the hero clear and response choices reachable', async ({ page }) => {
@@ -275,16 +279,31 @@ test('narrow mobile keeps the hero clear and response choices reachable', async 
   const graph = await page.locator('.graph').boundingBox();
   expect(copy!.y + copy!.height).toBeLessThan(graph!.y);
   await page.screenshot({ path: 'test-results/narrow-identity.png', fullPage: true });
-  await page.getByRole('button', { name: /Veteran actor/ }).click();
+  await page.getByRole('button', { name: /Actor & studio founder/ }).click();
   await page.getByRole('button', { name: 'Introduce a rumour' }).click();
   await page.getByRole('button', { name: 'Choose a response' }).click();
+  await page.getByRole('button', { name: 'Read the original incident' }).click();
+  await expect(page.locator('.incident-brief h3')).toBeInViewport();
+  await expect(page.locator('.incident-brief')).toContainText(identities[2].incident);
   const network = await page.locator('.graph').boundingBox();
   const controls = await page.locator('.response-choices').boundingBox();
   expect(network!.y + network!.height).toBeLessThan(controls!.y);
   await page.screenshot({ path: 'test-results/narrow-choices.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.getByRole('button', { name: /Short denial/ }).click();
+  await page.getByRole('button', { name: /Explain the joke/ }).click();
   await expect(page.locator('.experience')).toHaveAttribute('data-running', 'true');
+  await expect(page.locator('.experience')).toHaveAttribute('data-step', 'outcome');
+  await expect(page.locator('.outcome-card')).toHaveCount(3);
+  await expect(page.locator('.baseline-strip')).toContainText('66% hostile');
+  await expect(page.locator('.outcome-card.selected-result')).toContainText('72%');
+  await page.locator('.outcome-card').nth(2).getByRole('button', { name: 'Watch this branch' }).click();
+  await expect(page.locator('.experience')).toHaveAttribute('data-running', 'true');
+  await expect(page.locator('.history-list')).toContainText(identities[2].outcomes[2].response);
+  await expect(page.locator('.experience')).toHaveAttribute('data-step', 'outcome');
+  await expect(page.locator('.outcome-card.selected-result h3')).toHaveText('Acknowledge + clarify');
+  await expect(page.locator('.outcome-card').first()).toContainText('PREVIOUSLY PLAYED');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/narrow-comparison.png', fullPage: true });
 });
 
 test('a browser without WebGL retains the canvas story and keyboard selection', async ({ page }) => {
@@ -297,10 +316,38 @@ test('a browser without WebGL retains the canvas story and keyboard selection', 
   });
   await page.goto('/');
   await expect(page.locator('.graph')).toHaveAttribute('data-renderer', 'canvas-fallback');
-  await page.getByRole('button', { name: /Veteran actor/ }).focus();
+  await page.getByRole('button', { name: /Actor & studio founder/ }).focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.experience')).toHaveAttribute('data-step', 'society');
-  await expect(page.locator('.event-history')).toContainText('veteran actor');
+  await expect(page.locator('.event-history')).toContainText('actor & studio founder');
   await expect(page.locator('.highlight-avatar-pin')).toHaveAttribute('data-node', '0');
   await expect(page.locator('.highlight-avatar-pin .logo-wire')).toBeInViewport();
 });
+
+for (const [identity, scenario] of identities.entries()) {
+  test(`${scenario.title}: all branches restore the same crisis and preserve distinct reactions`, () => {
+    let s = reducer(reducer(initialState, { type: 'identity', index: identity }), { type: 'enter' });
+    s = reducer(s, { type: 'tick', dt: SOCIETY_READY_AT });
+    s = reducer(s, { type: 'rumour' });
+    s = reducer(s, { type: 'tick', dt: 15 });
+    const original = getView(s).history;
+    expect(getView(s).metrics).toEqual(scenario.crisis);
+    s = reducer(s, { type: 'respond' });
+    for (const o of scenario.outcomes) {
+      expect(getView(s).metrics).toEqual(scenario.crisis);
+      s = reducer(s, { type: 'strategy', strategy: o.id });
+      s = reducer(s, { type: 'tick', dt: 15 });
+      expect(getView(s).metrics).toEqual(o.metrics);
+      expect(getView(s).history.slice(0, 4)).toEqual(original);
+      expect(getView(s).history.slice(5).map(p => p.text)).toEqual(o.reactions.map(r => r.text));
+      expect(o.metrics.supportive + o.metrics.hostile).toBeLessThanOrEqual(100);
+      const replay = reducer(s, { type: 'replay', strategy: o.id });
+      expect(getView(replay).metrics).toEqual(scenario.crisis);
+      expect(getView(replay).history).toEqual(original);
+      expect(replay.history).toEqual(s.history);
+      s = reducer(s, { type: 'back' });
+    }
+    expect(s.history).toHaveLength(3);
+    expect(reducer(s, { type: 'restart' }).history).toEqual([]);
+  });
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { nodes } from './data';
+import { nodes, identities } from './data';
 import { PostAvatar, postName } from './PostAvatar';
 import { getView, type State } from './simulation';
 import { PersonaGenesis } from './PersonaGenesis';
@@ -42,6 +42,7 @@ export function EventHistory({ state, paused, reduced }: { state: State; paused:
     <header className="history-heading">
       <div className="history-label"><span className="eyebrow">{society ? 'BEFORE THE RUMOUR' : 'THE STORY SO FAR'}</span><span className={`history-status ${settled || paused ? 'is-still' : ''}`}><i />{paused ? 'Paused' : creating ? 'Creating' : settled ? 'Ready to review' : 'Live'}</span></div>
       <h2>{society ? creating ? 'Persona genesis' : 'Society is live' : 'How the story spread'}</h2>
+      {!society && <button className="history-original" onClick={() => { following.current = false; list.current?.scrollTo({ top: 0, behavior: reduced ? 'instant' : 'smooth' }); }}>Read the original incident ↑</button>}
     </header>
     <div className="history-scroll" ref={list} tabIndex={0} role="region" aria-label="Key moments" onScroll={() => {
       const el = list.current!;
@@ -50,12 +51,13 @@ export function EventHistory({ state, paused, reduced }: { state: State; paused:
     }}>
       {creating && <PersonaGenesis count={personaCount} elapsed={state.elapsed} />}
       {society && !creating && <div className="genesis-complete"><strong>{personaCount} personas</strong><span>5 communities · Individual voices, connected.</span></div>}
+      {!society && <section className="incident-brief"><span className="eyebrow">THE ORIGINAL INCIDENT</span><h3>{identities[state.identity].hook}</h3><p>{identities[state.identity].incident}</p><p><b>What’s visible</b> {identities[state.identity].known}</p><p><b>Still unverified</b> {identities[state.identity].unknown}</p></section>}
       <ol className="history-list">
         {history.map((event, i) => <li key={`${event.phase}-${event.at}`} className={`history-moment moment-${event.phase} ${active?.at === event.at && active.text === event.text ? 'is-active' : ''}`}>
           {event.phase === 'response' && history[i - 1]?.phase !== 'response' && <div className="history-divider">AFTER YOUR DECISION</div>}
           <article className="history-event">
             <div className="moment-heading"><span>{event.kind.replace(/^\d+ \/ /, '')}</span><time dateTime={`PT${event.at}S`}>+{Math.floor(event.at / 60)}:{String(Math.floor(event.at % 60)).padStart(2, '0')}</time></div>
-            <div className="moment-person"><PostAvatar node={event.node} identity={state.identity} /><div><strong>{event.node === -1 ? 'You' : postName(event.node)}</strong><small>{event.node === -1 ? 'Official account' : nodes[event.node].handle}</small></div><span className="moment-category">{event.node === -1 ? 'You' : nodes[event.node].category}</span></div>
+            <div className="moment-person"><PostAvatar node={event.node} identity={state.identity} /><div><strong>{event.author ?? (event.node === -1 ? 'You' : postName(event.node))}</strong><small>{event.node === -1 ? 'Official account' : event.author ? 'Simulated post' : nodes[event.node].handle}</small></div><span className="moment-category">{event.node === -1 ? 'You' : nodes[event.node].category}</span></div>
             <p className="moment-post">{event.text}</p>
             <div className="moment-reaction">{event.reaction}</div>
             <div className="moment-impact">{event.impact}</div>

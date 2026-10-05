@@ -12,5 +12,5 @@ export function PostAvatar({ node, identity }: { node: number; identity: number 
   return <IdentityPortrait index={node === -1 ? identity : node === 115 ? 5 : node === 146 ? 3 : 3 + node % 6} />;
 }
 export function postName(node: number) {
-  return publishers[node]?.name ?? (node === 146 ? 'Maya Bennett' : node === 115 ? 'Unfiltered' : 'Community member');
+  return publishers[node]?.name ?? (node === 146 ? 'Industry insider' : node === 115 ? 'Unfiltered' : 'Community member');
 }

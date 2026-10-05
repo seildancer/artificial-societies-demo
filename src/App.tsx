@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { identities, outcomes, type Strategy } from './data';
+import { identities, type Strategy } from './data';
 import { GraphStage } from './GraphStage';
 import { IdentityPortrait } from './IdentityPortrait';
 import { Brand } from './Brand';
@@ -19,6 +19,8 @@ export function App() {
   const panel = useRef<HTMLElement>(null);
   const tickState = useRef({ paused, state }); tickState.current = { paused, state };
   const view = getView(state);
+  const scenario = identities[state.identity];
+  const outcomes = scenario.outcomes;
   const stepIndex = steps.indexOf(state.step);
   const [previewIdentity, setPreviewIdentity] = useState(-1);
   const societyReady = state.step === 'society' && state.elapsed >= SOCIETY_READY_AT;
@@ -73,7 +75,7 @@ export function App() {
             event.currentTarget.style.setProperty('--fly-y', `${target.y + target.height / 2 - card.y - card.height / 2}px`);
             dispatch({ type: 'identity', index: i });
           }}>
-            <IdentityPortrait index={i} /><span className="persona-text"><strong>{p.title}</strong></span><Arrow />
+            <IdentityPortrait index={i} /><span className="persona-text"><strong>{p.title}</strong><span>{p.hook}</span></span><Arrow />
           </button>)}</div>
         </section>
       </> : <>
@@ -94,15 +96,15 @@ export function App() {
             <div className="actions"><button className="text-button" onClick={back}>← Change identity</button><button className="primary danger-button" disabled={!societyReady} onClick={() => { setPaused(false); dispatch({ type: 'rumour' }); }}>Introduce a rumour<Arrow /></button></div>
           </>}
           {state.step === 'rumour' && <>
-            <div className="interaction-copy"><h2>{rumourReady ? 'Four moments. A different story.' : 'Watch a rumour become a reputation.'}</h2></div>
+            <div className="interaction-copy"><h2>{rumourReady ? scenario.hook : 'Watch a rumour become a reputation.'}</h2></div>
             <div className="actions"><button className="text-button" onClick={back}>← Before the rumour</button><button className="primary" disabled={!rumourReady} onClick={() => { setPaused(false); dispatch({ type: 'respond' }); }}>Choose a response<Arrow /></button></div>
           </>}
           {choosing && <>
-            <div className="response-heading"><div><h2>Choose a response</h2></div><button className="text-button" onClick={back}>← Back to the rumour</button></div>
-            <div className="response-options">{outcomes.map((o, i) => <button key={o.id} onClick={() => choose(o.id)} className="response-card"><span className="response-number">0{i + 1}{state.history.includes(o.id) && <span>TRIED</span>}</span><strong>{o.title}</strong><span>{o.short}</span><Arrow /></button>)}</div>
+            <div className="response-heading"><div><span className="eyebrow">{scenario.title} · ONE STATEMENT, THREE APPROACHES</span><h2>What will you say?</h2><p>Same audience. Same rumour. Only your words change.</p></div><button className="text-button" onClick={back}>← Back to the rumour</button></div>
+            <div className="response-options">{outcomes.map((o, i) => <button key={o.id} onClick={() => choose(o.id)} className="response-card"><span className="response-number">0{i + 1}{state.history.includes(o.id) && <span>TRIED</span>}</span><strong>{o.title}</strong><span className="response-intent">{o.short}</span><q>{o.response}</q><span className="run-label">Simulate this response ↗</span></button>)}</div>
           </>}
           {state.step === 'response' && state.running && <>
-            <div className="interaction-copy"><h2>{state.strategy === 'silence' ? 'Observing reactions to silence.' : 'Observing audience reactions.'}</h2></div><div className="actions"><button className="text-button" onClick={back}>← Back to the rumour</button></div>
+            <div className="interaction-copy"><h2>Observing audience reactions.</h2></div><div className="actions"><button className="text-button" onClick={back}>← Back to the rumour</button></div>
           </>}
           {state.step === 'outcome' && <>
             <div className="interaction-copy"><h2>{view.outcome!.insight}</h2></div><div className="actions"><button className="text-button" onClick={restart}>Start over</button><button className="primary" onClick={back}>Try another response<Arrow /></button></div>
@@ -110,13 +112,23 @@ export function App() {
         </section>
 
         {state.step === 'outcome' && <aside className="outcome-panel" aria-label="Response outcome">
-          <h2>{view.outcome!.title}</h2>
-          <div className="result-head"><span>THE CHANGE</span><span>Before → After</span></div>
-          <div className="result-row"><span>Net sentiment</span><strong><em>−11</em> → {signed(view.metrics.supportive - view.metrics.hostile)}</strong></div>
-          <div className="result-row"><span>Rumour belief</span><strong><em>58%</em> → {view.metrics.belief}%</strong></div>
-          <div className="result-row reach-row"><span>Story reach</span><strong>{signed(view.metrics.reach - 100)}% <span>{view.metrics.reach > 100 ? '↑' : '↓'}</span></strong></div>
-          <details className="result-details" key={state.strategy}><summary>Response analysis</summary><p className="statement-quote">{view.outcome!.response}</p><ul>{view.outcome!.explanations.map(e => <li key={e}>{e}</li>)}</ul></details>
-          {state.history.length > 1 && <div className="comparison"><div className="eyebrow">RESPONSE COMPARISON</div><table><caption className="sr-only">Comparison of responses tried with identical starting conditions</caption><thead><tr><th>Response</th><th>Sentiment</th><th>Reach</th></tr></thead><tbody>{state.history.map(id => { const o = outcomes.find(o => o.id === id)!; return <tr key={id} className={state.strategy === id ? 'selected-result' : ''}><td>{o.title}</td><td>{signed(o.metrics.supportive - o.metrics.hostile)}</td><td>{signed(o.metrics.reach - 100)}%</td></tr>; })}</tbody></table></div>}
+          <span className="eyebrow">{scenario.title} · RESPONSE LAB</span>
+          <h2>Compare the consequences</h2>
+          <p className="comparison-intro">One shared starting point. All three scripted branches, at the end of the same reaction sequence.</p>
+          <p className="belief-definition"><b>Rumour being measured:</b> {scenario.claim}</p>
+          <div className="comparison-grid">
+            <div className="baseline-strip"><strong>Before any response</strong><span>{scenario.crisis.hostile}% hostile</span><span>{scenario.crisis.belief}% believe the rumour</span><span>100 reach index</span></div>
+            {outcomes.map(o => <article className={`outcome-card ${state.strategy === o.id ? 'selected-result' : ''}`} key={o.id}>
+              <span className="eyebrow">{state.strategy === o.id ? 'JUST PLAYED' : state.history.includes(o.id) ? 'PREVIOUSLY PLAYED' : 'ALTERNATIVE BRANCH'}</span>
+              <h3>{o.title}</h3>
+              <p className="statement-quote">“{o.response}”</p>
+              <dl>{([['hostile', 'Hostile audience'], ['belief', 'Believe the rumour'], ['reach', 'Story reach index']] as const).map(([key, label]) => <div key={key} className="compare-metric"><dt>{label}</dt><dd><strong>{o.metrics[key]}{key !== 'reach' && '%'}</strong><span>{signed(o.metrics[key] - scenario.crisis[key])} {key === 'reach' ? 'index points' : 'pp'}</span></dd><div className="metric-track" aria-hidden="true"><i style={{width: `${o.metrics[key] / (key === 'reach' ? 2 : 1)}%`}} /><b style={{left: `${scenario.crisis[key] / (key === 'reach' ? 2 : 1)}%`}} /></div></div>)}</dl>
+              <h4>{o.insight}</h4>
+              <details><summary>Why this happened</summary><ul>{o.explanations.map(e => <li key={e}>{e}</li>)}</ul><div className="branch-reactions">{o.reactions.map((r, i) => <blockquote key={i}><strong>{r.author}</strong><p>“{r.text}”</p><small>{r.impact}</small></blockquote>)}</div></details>
+              <button className="text-button" onClick={() => { setPaused(false); dispatch({ type: 'replay', strategy: o.id }); }}>{state.strategy === o.id ? 'Replay reactions' : 'Watch this branch'} <Arrow /></button>
+            </article>)}
+          </div>
+          <p className="metric-note">Changes are relative to before the response. pp = percentage points. Reach is indexed to 100, not a headcount. Markers show the shared baseline. These illustrative values demonstrate tradeoffs; they are not forecasts.</p>
         </aside>}
       </>}
     </main>
