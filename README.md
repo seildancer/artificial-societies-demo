@@ -34,6 +34,8 @@ The progress indicator is informational. Back only moves one step; the explicit 
 
 ## Implementation
 
+The design uses a subdued premiere backdrop throughout, with the live graph visible from the opening. Reusable silhouettes connect the role cards to the central graph identity; hovering or focusing a card previews its silhouette. Sentiment has one compact colour key, and results show the three principal measures with expandable explanations. Visual refinements live in `src/design.css` and the native SVG portraits in `src/IdentityPortrait.tsx`. The optimised backdrop and generation prompt are in `public/images/premiere-v2.webp` and `public/images/premiere-v2.md`.
+
 | File | Responsibility |
 | --- | --- |
 | `src/data.ts` | Identities, seeded 3D population, sentiment snapshots, narrative events and four outcomes |

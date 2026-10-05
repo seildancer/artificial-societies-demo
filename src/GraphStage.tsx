@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { clusters, hash, identities, nodes } from './data';
 import { getView, type State } from './simulation';
+import { IdentityPortrait } from './IdentityPortrait';
 
 const cream = new THREE.Color('#F4EDE4'), grey = new THREE.Color('#69676c'), red = new THREE.Color('#E9364A');
 const gold = new THREE.Color('#D6A84B');
@@ -12,7 +13,7 @@ const responseOrder = [...nodes].sort((a, b) => Math.hypot(a.x, a.y) - Math.hypo
 const rumourRanks = new Map(rumourOrder.map((id, i) => [id, i / nodes.length]));
 const responseRanks = new Map(responseOrder.map((id, i) => [id, i / nodes.length]));
 
-export function GraphStage({ state, reduced, paused }: { state: State; reduced: boolean; paused: boolean }) {
+export function GraphStage({ state, reduced, paused, portraitIndex }: { state: State; reduced: boolean; paused: boolean; portraitIndex: number }) {
   const host = useRef<HTMLDivElement>(null);
   const centre = useRef<HTMLDivElement>(null);
   const highlight = useRef<HTMLElement>(null);
@@ -36,7 +37,7 @@ export function GraphStage({ state, reduced, paused }: { state: State; reduced: 
     renderer?.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 100);
-    camera.position.set(-4.5, 0.6, 18);
+    camera.position.set(0, 0.6, 18);
     const geometry = new THREE.SphereGeometry(1, 10, 8);
     const material = new THREE.MeshBasicMaterial();
     const mesh = new THREE.InstancedMesh(geometry, material, nodes.length);
@@ -104,7 +105,7 @@ export function GraphStage({ state, reduced, paused }: { state: State; reduced: 
         if (!reduce) { p.x += Math.sin(t * 0.17 + i) * 0.045; p.y += Math.cos(t * 0.13 + i * 2) * 0.045; }
       });
       const fullDistance = Math.max(13.8, (small ? 6.2 : 7.6) / Math.tan(THREE.MathUtils.degToRad(21.5)) / camera.aspect);
-      let targetX = isIdentity && !small ? -4.7 : 0;
+      let targetX = 0;
       let targetY = 0.7, targetZ = fullDistance;
       const focus = active ? active.node === -1 ? origin : points[active.node] : undefined;
       const strength = active && !reduce ? ease((s.elapsed - active.at) / 0.55) * ease((active.at + active.duration - s.elapsed) / 0.55) : 0;
@@ -126,7 +127,7 @@ export function GraphStage({ state, reduced, paused }: { state: State; reduced: 
         const change = v.progress === 1 ? 1 : ease((v.progress - ranks.get(i)!) * 8);
         color.copy(sentimentColor(v.from[i])).lerp(sentimentColor(v.to[i]), change);
         const dim = active && !relevant.has(i) ? 1 - 0.7 * strength : 1;
-        color.multiplyScalar(dim * (isIdentity ? 0.65 : 0.87));
+        color.multiplyScalar(dim * (isIdentity ? 0.85 : 0.87));
         displayedColors[i].lerp(color, reduce ? 1 : 1 - Math.exp(-dt * 8));
         color.copy(displayedColors[i]);
         dummy.position.copy(p);
@@ -148,7 +149,7 @@ export function GraphStage({ state, reduced, paused }: { state: State; reduced: 
       // Sparse local relationships, not a permanent hairball.
       if (v.genesis > 0.9) for (let i = 0; i < nodes.length; i += 2) {
         const other = Math.min(i + 3, nodes.length - 1);
-        if (nodes[i].category === nodes[other].category) edge(points[i], points[other], grey, active ? 0.07 : 0.17);
+        if (nodes[i].category === nodes[other].category) edge(points[i], points[other], grey, active ? 0.07 : isIdentity ? 0.35 : 0.22);
       }
       const tense = s.step === 'rumour' || (s.step === 'response' && !s.running);
       const activityColor = tense ? red : cream;
@@ -203,13 +204,12 @@ export function GraphStage({ state, reduced, paused }: { state: State; reduced: 
   }, []);
 
   return <div ref={host} className={`graph ${state.step === 'identity' ? 'graph-intro' : ''}`} role="group" aria-label={`3D social network: ${Math.round(229 * view.genesis)} personas. ${view.metrics.supportive}% supportive, ${view.metrics.hostile}% hostile.`} data-renderer={fallback ? 'canvas-fallback' : 'webgl'}>
-    <div ref={centre} className="celebrity-anchor"><div className="celebrity-mark">✦</div><span>{state.step === 'identity' ? 'YOU' : identities[state.identity].name}<small>{state.step === 'identity' ? 'The centre of attention' : 'THE CENTRE OF ATTENTION'}</small></span></div>
-    {clusters.map((c, i) => <div key={c.name} ref={el => { clusterLabels.current[i] = el; }} className="cluster-label">{c.name}<span>{c.count}</span></div>)}
+    <div ref={centre} className="celebrity-anchor"><div className="celebrity-mark" role="img" aria-label={portraitIndex < 0 ? 'You, at the centre of the society' : `You as the ${identities[portraitIndex].title.toLowerCase()}`}><IdentityPortrait index={portraitIndex} /></div></div>
+    {clusters.map((c, i) => <div key={c.name} ref={el => { clusterLabels.current[i] = el; }} className="cluster-label">{c.name}</div>)}
     {event && <article ref={highlight} key={`${state.step}-${event.at}`} className={`highlight ${state.step === 'rumour' ? 'highlight-danger' : ''}`} aria-live="polite">
-      <div className="eyebrow">{event.kind}</div>
-      <div className="highlight-person"><span className="avatar">{event.node === -1 ? '✦' : nodes[event.node].category.slice(0, 1)}</span><div>{event.node === -1 ? identities[state.identity].name : nodes[event.node].role}<small>{event.node === -1 ? 'Your public position' : nodes[event.node].handle} · just now</small></div><span className="post-mark">↗</span></div>
-      <p>{event.text}</p><div className="reaction">{event.reaction}</div><div className="impact">↳ {event.impact}</div>
+      <div className="highlight-person"><span className="avatar">{event.node === -1 ? '✦' : nodes[event.node].category.slice(0, 1)}</span><div>{event.node === -1 ? 'You' : nodes[event.node].handle}</div></div>
+      <p>{event.text}</p><div className="reaction">{event.reaction}</div>
     </article>}
-    {hover && !event && <div className="node-tooltip" style={{ left: hover.x, top: hover.y }}>{nodes[hover.id].role}<small>{nodes[hover.id].category} · {view.to[hover.id] > 0 ? 'Supportive' : view.to[hover.id] < 0 ? 'Hostile' : 'Uncertain'}</small></div>}
+    {hover && !event && <div className="node-tooltip" style={{ left: hover.x, top: hover.y }}>{nodes[hover.id].role}<small>{nodes[hover.id].category} · {view.to[hover.id] > 0 ? 'Supportive' : view.to[hover.id] < 0 ? 'Hostile' : 'Uncertain'} · {nodes[hover.id].influence > .66 ? 'High' : nodes[hover.id].influence > .33 ? 'Medium' : 'Low'} influence</small></div>}
   </div>;
 }

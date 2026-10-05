@@ -3,9 +3,9 @@ export type Strategy = 'silence' | 'denial' | 'apology' | 'statement';
 export type Sentiment = -1 | 0 | 1;
 export interface Persona { id: number; category: Category; role: string; handle: string; influence: number; x: number; y: number; z: number }
 export const identities = [
-  { title: 'Breakout actor', name: 'Maya Chen', initials: 'MC', description: 'Suddenly famous after a hit streaming series.', glyph: '✧', context: 'the next major sci-fi project' },
-  { title: 'Pop star', name: 'Jules Vega', initials: 'JV', description: 'A huge online fandom. Constant scrutiny.', glyph: '✳', context: 'a much-anticipated concert film' },
-  { title: 'Veteran actor', name: 'Alex Morgan', initials: 'AM', description: 'An established name. A carefully managed image.', glyph: '❋', context: 'an award-tipped new drama' },
+  { title: 'Breakout actor', context: 'the next major sci-fi project' },
+  { title: 'Pop star', context: 'a much-anticipated concert film' },
+  { title: 'Veteran actor', context: 'an award-tipped new drama' },
 ];
 export const clusters: { name: Category; count: number; x: number; y: number; z: number; roles: string[] }[] = [
   { name: 'Media', count: 45, x: -1.3, y: 2.6, z: -0.5, roles: ['Entertainment journalist', 'Mainstream outlet', 'Gossip account', 'Culture commentator'] },
@@ -63,13 +63,13 @@ export interface StoryEvent { at: number; duration: number; node: number; role?:
 export function storyEvents(phase: string, identity: number, strategy?: Strategy): StoryEvent[] {
   const person = identities[identity];
   if (phase === 'society') return [
-    { at: 3.1, duration: 3.1, node: 0, text: `${person.name} has apparently joined ${person.context}. One to watch.`, reaction: '@ScreenTea reposted · “Huge if true.”', impact: '14 personas influenced · Reach +2.1%', kind: 'A little good press', targets: [3, 46, 47, 164] },
-    { at: 7, duration: 3.1, node: 146, text: `Working with ${person.name} has been a highlight. Some very good things on the way.`, reaction: 'Fans reacted positively · 8 new follows', impact: '21 personas influenced · Trust rising', kind: 'Word gets around', targets: [147, 151, 70, 170] },
+    { at: 3.1, duration: 3.1, node: 0, text: `The ${person.title.toLowerCase()} has apparently joined ${person.context}. One to watch.`, reaction: '@ScreenTea reposted · “Huge if true.”', impact: '14 personas influenced · Reach +2.1%', kind: 'A little good press', targets: [3, 46, 47, 164] },
+    { at: 7, duration: 3.1, node: 146, text: `Working with the ${person.title.toLowerCase()} has been a highlight. Some very good things on the way.`, reaction: 'Fans reacted positively · 8 new follows', impact: '21 personas influenced · Trust rising', kind: 'Word gets around', targets: [147, 151, 70, 170] },
   ];
   if (phase === 'rumour') return [
-    { at: 0.3, duration: 3, node: 2, text: `Heard ${person.name} left rehearsal after a huge argument with the director. Someone on set needs to talk.`, reaction: 'Unverified source · First 2 reposts', impact: 'One post. A whole new narrative.', kind: '01 / The spark', targets: [3, 7] },
-    { at: 4, duration: 2.7, node: 3, text: `Apparently ${person.name} stormed off set. Not a great look when everyone else is trying to work.`, reaction: '“Left rehearsal” becomes “stormed off set”', impact: '14 personas influenced', kind: '02 / The embellishment', targets: [1, 115, 166, 32] },
-    { at: 7.5, duration: 2.7, node: 1, text: `CHAOS ON SET: ${person.name} clashes with director as production faces questions.`, reaction: 'A private disagreement becomes a public crisis', impact: '38 personas influenced', kind: '03 / The headline', targets: [14, 39, 181, 192, 201] },
+    { at: 0.3, duration: 3, node: 2, text: `Heard the ${person.title.toLowerCase()} left rehearsal after a huge argument with the director. Someone on set needs to talk.`, reaction: 'Unverified source · First 2 reposts', impact: 'One post. A whole new narrative.', kind: '01 / The spark', targets: [3, 7] },
+    { at: 4, duration: 2.7, node: 3, text: `Apparently the ${person.title.toLowerCase()} stormed off set. Not a great look when everyone else is trying to work.`, reaction: '“Left rehearsal” becomes “stormed off set”', impact: '14 personas influenced', kind: '02 / The embellishment', targets: [1, 115, 166, 32] },
+    { at: 7.5, duration: 2.7, node: 1, text: `CHAOS ON SET: ${person.title.toLowerCase()} clashes with director as production faces questions.`, reaction: 'A private disagreement becomes a public crisis', impact: '38 personas influenced', kind: '03 / The headline', targets: [14, 39, 181, 192, 201] },
     { at: 11, duration: 2.7, node: 115, text: 'Impossible to work with. We’ve been saying this for months. This is just what finally got out.', reaction: 'A single incident becomes a character judgement', impact: '90+ personas reached · Belief hardens', kind: '04 / The verdict', targets: [116, 122, 174, 208] },
   ];
   if (phase === 'response' && strategy) {

@@ -51,6 +51,9 @@ test('desktop: genesis, mutations, all four response journeys and comparison', a
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /You’re famous/ })).toBeVisible();
   await expect(page.locator('.graph')).toHaveAttribute('data-renderer', 'webgl');
+  await expect(page.locator('.graph')).toHaveCSS('opacity', '1');
+  await page.getByRole('button', { name: /Breakout actor/ }).focus();
+  await expect(page.getByRole('img', { name: 'You as the breakout actor' })).toBeVisible();
   await page.screenshot({ path: 'test-results/identity-desktop.png' });
   await page.getByRole('button', { name: /Breakout actor/ }).click();
   await expect(page.getByText('Creating your social world')).toBeVisible();
@@ -65,15 +68,15 @@ test('desktop: genesis, mutations, all four response journeys and comparison', a
   await page.screenshot({ path: 'test-results/rumour-mutation.png' });
   await expect(page.locator('.highlight')).toContainText('Impossible to work with.');
   await expect(page.getByRole('button', { name: 'Decide how to respond' })).toBeEnabled();
-  await expect(page.locator('.sentiment-number')).toContainText('-11');
+  await expect(page.locator('.sentiment-key')).toContainText('31% supportive');
   await page.getByRole('button', { name: 'Before the rumour' }).click();
-  await expect(page.locator('.sentiment-number')).toContainText('+62');
+  await expect(page.locator('.sentiment-key')).toContainText('72% supportive');
   await expect(page.getByRole('button', { name: 'Spread a rumour' })).toBeEnabled();
   await page.getByRole('button', { name: 'Spread a rumour' }).click();
   await page.getByRole('button', { name: 'Decide how to respond' }).click();
   await page.screenshot({ path: 'test-results/response-choices.png' });
   for (const o of outcomes) {
-    await expect(page.locator('.sentiment-number')).toContainText('-11');
+    await expect(page.locator('.sentiment-key')).toContainText('31% supportive');
     await page.getByRole('button', { name: new RegExp(o.title.replace('+', '\\+')) }).click();
     await expect(page.locator('.highlight')).toContainText(o.reactions[0]);
     await expect(page.locator('.highlight')).toContainText(o.reactions[1]);
@@ -81,6 +84,10 @@ test('desktop: genesis, mutations, all four response journeys and comparison', a
     await expect(page.locator('.experience')).toHaveAttribute('data-step', 'outcome');
     await expect(page.getByRole('heading', { name: o.insight })).toBeVisible();
     await expect(page.getByRole('complementary', { name: 'Response outcome' })).toContainText(`${o.metrics.belief}%`);
+    await expect(page.getByRole('complementary', { name: 'Public sentiment' })).toHaveCount(0);
+    await page.getByText('Why it played out this way').click();
+    await expect(page.locator('.statement-quote')).toBeVisible();
+    await page.getByText('Why it played out this way').click();
     await page.screenshot({ path: `test-results/outcome-${o.id}.png` });
     await page.getByRole('button', { name: 'Try another response' }).click();
     await expect(page.locator('.experience')).toHaveAttribute('data-step', 'response');
@@ -101,7 +108,7 @@ test('mobile and reduced motion preserve the story and accessible controls', asy
   await expect(page.getByRole('button', { name: 'Motion reduced' })).toHaveAttribute('aria-pressed', 'true');
   await page.screenshot({ path: 'test-results/identity-mobile.png', fullPage: true });
   await page.getByRole('button', { name: /Pop star/ }).click();
-  await expect(page.getByRole('heading', { name: /Jules Vega/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'You as the pop star' })).toBeVisible();
   await page.getByRole('button', { name: 'Pause simulation' }).click();
   const progress = await page.getByRole('progressbar').getAttribute('aria-valuenow');
   await page.waitForTimeout(500);
@@ -115,12 +122,12 @@ test('mobile and reduced motion preserve the story and accessible controls', asy
   await page.screenshot({ path: 'test-results/outcome-mobile.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Try another response' }).click();
-  await expect(page.locator('.sentiment-number')).toContainText('-11');
+  await expect(page.locator('.sentiment-key')).toContainText('31% supportive');
   await page.getByRole('button', { name: 'Back to the rumour' }).click();
   await page.getByRole('button', { name: 'Before the rumour' }).click();
   await page.getByRole('button', { name: 'Change identity' }).click();
   await page.getByRole('button', { name: /Veteran actor/ }).click();
-  await expect(page.getByRole('heading', { name: /Alex Morgan/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'You as the veteran actor' })).toBeVisible();
 });
 
 test('narrow mobile keeps the hero clear and response choices reachable', async ({ page }) => {
@@ -134,9 +141,9 @@ test('narrow mobile keeps the hero clear and response choices reachable', async 
   await page.getByRole('button', { name: /Veteran actor/ }).click();
   await page.getByRole('button', { name: 'Spread a rumour' }).click();
   await page.getByRole('button', { name: 'Decide how to respond' }).click();
-  const legend = await page.locator('.graph-legend').boundingBox();
+  const network = await page.locator('.graph').boundingBox();
   const controls = await page.locator('.response-choices').boundingBox();
-  expect(legend!.y + legend!.height).toBeLessThan(controls!.y);
+  expect(network!.y + network!.height).toBeLessThan(controls!.y);
   await page.screenshot({ path: 'test-results/narrow-choices.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: /Short denial/ }).click();
@@ -156,5 +163,5 @@ test('a browser without WebGL retains the canvas story and keyboard selection', 
   await page.getByRole('button', { name: /Veteran actor/ }).focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.experience')).toHaveAttribute('data-step', 'society');
-  await expect(page.locator('.highlight')).toContainText('Alex Morgan');
+  await expect(page.locator('.highlight')).toContainText('veteran actor');
 });
