@@ -4,6 +4,11 @@
 .experience:after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#0d0d0f 4%,#0d0d0f55 60%,#0d0d0f33),linear-gradient(90deg,#0d0d0fdd,transparent 75%);pointer-events:none}
 .step-identity:before{opacity:.34}
 .header{height:90px;border-color:#ffffff12}
+.brand-mark{width:34px;height:34px;flex-shrink:0}
+.powered-by{display:flex;align-items:center;gap:14px;margin-top:28px;pointer-events:auto}
+.powered-by>span{font-size:10px;color:#a59d92;letter-spacing:.3px}
+.powered-by .brand{font-size:13px;gap:8px;letter-spacing:-.25px;color:#c9c1b5}
+.powered-by .brand-mark{width:27px;height:27px}
 .progress{gap:25px}.progress li{color:#99928b}.progress .current:after{height:1px;width:18px;left:0;bottom:-13px;border-radius:0}
 .footer{border-color:#ffffff12;color:#9d9690}.footer .fiction-note{font-size:9px;letter-spacing:.3px}
 .intro-copy{top:17%;left:7%;max-width:440px}
@@ -65,7 +70,8 @@
  .step-identity .stage{height:calc(100svh - 125px);min-height:770px}
  .intro-copy{left:24px;right:24px;top:30px;max-width:none}.intro-copy .eyebrow{font-size:8px;letter-spacing:1.7px}
  .intro-copy h1{font-size:40px;letter-spacing:-1.8px;line-height:1.12;margin-top:17px}.intro-copy h1>span{display:inline;max-width:none}
- .graph-intro{left:0;right:0;top:240px;bottom:290px;opacity:1}
+ .header .brand-mark{width:28px;height:28px}.powered-by{margin-top:20px;gap:12px}.powered-by>span{font-size:9px}.powered-by .brand{font-size:11px}.powered-by .brand-mark{width:24px;height:24px}
+ .graph-intro{left:0;right:0;top:280px;bottom:290px;opacity:1}
  .graph-intro .cluster-label{display:block;font-size:7px;letter-spacing:.8px}
  .identity-panel{left:24px;right:24px;bottom:25px}.choice-heading{margin-bottom:12px}.choice-heading h2{font-size:11px}
  .persona-options{gap:8px}.persona-card{min-height:70px;padding:12px 18px;gap:18px}.persona-text strong{font-size:14px}.identity-portrait{width:44px;height:44px}.persona-card>span:last-child{font-size:18px}

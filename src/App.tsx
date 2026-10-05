@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import { identities, outcomes, type Strategy } from './data';
 import { GraphStage } from './GraphStage';
 import { IdentityPortrait } from './IdentityPortrait';
+import { Brand } from './Brand';
 import { getView, initialState, reducer, type Step } from './simulation';
 
 const steps: Step[] = ['identity', 'society', 'rumour', 'response', 'outcome'];
@@ -56,7 +57,7 @@ export function App() {
 
   return <div className={`experience step-${state.step} ${reduced ? 'reduced-motion' : ''}`} data-step={state.step} data-running={state.running} data-selected={state.identity}>
     <header className="header">
-      <a className="brand" href="https://societies.ai" target="_blank" rel="noreferrer" aria-label="Artificial Societies website"><span className="brand-symbol" aria-hidden="true">✳</span><span>artificial<br />societies</span></a>
+      <Brand />
       <ol className="progress" aria-label="Experience progress">{stepNames.map((name, i) => <li key={name} className={i === stepIndex ? 'current' : i < stepIndex ? 'visited' : ''} aria-current={i === stepIndex ? 'step' : undefined}><span className="step-number">0{i + 1}</span><span className="step-name">{name}</span></li>)}</ol>
     </header>
 
@@ -65,7 +66,8 @@ export function App() {
       {state.step === 'identity' ? <>
         <div className={`intro-copy ${state.selecting ? 'leaving' : ''}`}>
           <div className="eyebrow"><span className="gold-dash" /> HOLLYWOOD RUMOUR</div>
-          <h1>You’re famous.<br /><span>Can you survive<br />a rumour?</span></h1>
+          <h1>One rumour.<br /><span>How would you<br />respond?</span></h1>
+          <div className="powered-by"><span>Powered by</span><Brand /></div>
         </div>
         <section className={`identity-panel ${state.selecting ? 'selecting' : ''}`} aria-label="Choose your identity">
           <div className="choice-heading"><h2>Choose your role</h2></div>
@@ -91,19 +93,19 @@ export function App() {
 
         <section className={`interaction ${choosing ? 'response-choices' : ''} ${state.step === 'outcome' ? 'outcome-interaction' : ''}`} ref={panel} tabIndex={-1} aria-label={`${stepNames[stepIndex]} controls`}>
           {state.step === 'society' && <>
-            <div className="interaction-copy"><h2>{genesis ? 'Creating your social world…' : societyReady ? 'You’re in good company. For now.' : 'Word is getting around.'}</h2></div>
-            <div className="actions"><button className="text-button" onClick={back}>← Change identity</button><button className="primary danger-button" disabled={!societyReady} onClick={() => { setPaused(false); dispatch({ type: 'rumour' }); }}>Spread a rumour<Arrow /></button></div>
+            <div className="interaction-copy"><h2>{genesis ? 'Building the audience…' : societyReady ? 'Audience baseline established.' : 'Observing audience activity.'}</h2></div>
+            <div className="actions"><button className="text-button" onClick={back}>← Change identity</button><button className="primary danger-button" disabled={!societyReady} onClick={() => { setPaused(false); dispatch({ type: 'rumour' }); }}>Introduce a rumour<Arrow /></button></div>
           </>}
           {state.step === 'rumour' && <>
-            <div className="interaction-copy"><h2>{rumourReady ? 'The story is no longer yours.' : state.elapsed < 6.8 ? 'It starts with a whisper.' : 'A whisper becomes a verdict.'}</h2></div>
-            <div className="actions"><button className="text-button" onClick={back}>← Before the rumour</button><button className="primary" disabled={!rumourReady} onClick={() => { setPaused(false); dispatch({ type: 'respond' }); }}>Decide how to respond<Arrow /></button></div>
+            <div className="interaction-copy"><h2>{rumourReady ? 'Public sentiment has shifted.' : state.elapsed < 6.8 ? 'A rumour enters the network.' : 'The rumour reaches new audiences.'}</h2></div>
+            <div className="actions"><button className="text-button" onClick={back}>← Before the rumour</button><button className="primary" disabled={!rumourReady} onClick={() => { setPaused(false); dispatch({ type: 'respond' }); }}>Choose a response<Arrow /></button></div>
           </>}
           {choosing && <>
-            <div className="response-heading"><div><h2>What will you say?</h2></div><button className="text-button" onClick={back}>← Back to the rumour</button></div>
+            <div className="response-heading"><div><h2>Choose a response</h2></div><button className="text-button" onClick={back}>← Back to the rumour</button></div>
             <div className="response-options">{outcomes.map((o, i) => <button key={o.id} onClick={() => choose(o.id)} className="response-card"><span className="response-number">0{i + 1}{state.history.includes(o.id) && <span>TRIED</span>}</span><strong>{o.title}</strong><span>{o.short}</span><Arrow /></button>)}</div>
           </>}
           {state.step === 'response' && state.running && <>
-            <div className="interaction-copy"><h2>{state.strategy === 'silence' ? 'Even silence says something.' : 'Your words. Their interpretations.'}</h2></div><div className="actions"><button className="text-button" onClick={back}>← Back to the rumour</button></div>
+            <div className="interaction-copy"><h2>{state.strategy === 'silence' ? 'Observing reactions to silence.' : 'Observing audience reactions.'}</h2></div><div className="actions"><button className="text-button" onClick={back}>← Back to the rumour</button></div>
           </>}
           {state.step === 'outcome' && <>
             <div className="interaction-copy"><h2>{view.outcome!.insight}</h2></div><div className="actions"><button className="text-button" onClick={restart}>Start over</button><button className="primary" onClick={back}>Try another response<Arrow /></button></div>
@@ -117,12 +119,12 @@ export function App() {
           <div className="result-row"><span>Net sentiment</span><strong><em>−11</em> → {signed(view.metrics.supportive - view.metrics.hostile)}</strong></div>
           <div className="result-row"><span>Rumour belief</span><strong><em>58%</em> → {view.metrics.belief}%</strong></div>
           <div className="result-row reach-row"><span>Story reach</span><strong>{signed(view.metrics.reach - 100)}% <span>{view.metrics.reach > 100 ? '↑' : '↓'}</span></strong></div>
-          <details className="result-details" key={state.strategy}><summary>Why it played out this way</summary><p className="statement-quote">{view.outcome!.response}</p><ul>{view.outcome!.explanations.map(e => <li key={e}>{e}</li>)}</ul></details>
-          {state.history.length > 1 && <div className="comparison"><div className="eyebrow">YOUR EXPERIMENTS</div><table><caption className="sr-only">Comparison of responses tried with identical starting conditions</caption><thead><tr><th>Response</th><th>Sentiment</th><th>Reach</th></tr></thead><tbody>{state.history.map(id => { const o = outcomes.find(o => o.id === id)!; return <tr key={id} className={state.strategy === id ? 'selected-result' : ''}><td>{o.title}</td><td>{signed(o.metrics.supportive - o.metrics.hostile)}</td><td>{signed(o.metrics.reach - 100)}%</td></tr>; })}</tbody></table></div>}
+          <details className="result-details" key={state.strategy}><summary>Response analysis</summary><p className="statement-quote">{view.outcome!.response}</p><ul>{view.outcome!.explanations.map(e => <li key={e}>{e}</li>)}</ul></details>
+          {state.history.length > 1 && <div className="comparison"><div className="eyebrow">RESPONSE COMPARISON</div><table><caption className="sr-only">Comparison of responses tried with identical starting conditions</caption><thead><tr><th>Response</th><th>Sentiment</th><th>Reach</th></tr></thead><tbody>{state.history.map(id => { const o = outcomes.find(o => o.id === id)!; return <tr key={id} className={state.strategy === id ? 'selected-result' : ''}><td>{o.title}</td><td>{signed(o.metrics.supportive - o.metrics.hostile)}</td><td>{signed(o.metrics.reach - 100)}%</td></tr>; })}</tbody></table></div>}
         </aside>}
       </>}
     </main>
 
-    <footer className="footer"><div><span className="fiction-note">A fictional, scripted society</span></div><div className="footer-controls">{state.step !== 'identity' && <button onClick={() => setPaused(p => !p)} aria-label={paused ? 'Resume simulation' : 'Pause simulation'}>{paused ? '▶ Resume' : 'Ⅱ Pause'}</button>}<button onClick={() => setReduced(r => !r)} aria-pressed={reduced}>Motion {reduced ? 'reduced' : 'full'}</button></div></footer>
+    <footer className="footer"><div><span className="fiction-note">Illustrative simulation · scripted outcomes</span></div><div className="footer-controls">{state.step !== 'identity' && <button onClick={() => setPaused(p => !p)} aria-label={paused ? 'Resume simulation' : 'Pause simulation'}>{paused ? '▶ Resume' : 'Ⅱ Pause'}</button>}<button onClick={() => setReduced(r => !r)} aria-pressed={reduced}>Motion {reduced ? 'reduced' : 'full'}</button></div></footer>
   </div>;
 }
