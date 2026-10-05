@@ -8,6 +8,7 @@ import { clusters, hash, identities, nodes } from './data';
 import { getView, type State } from './simulation';
 import { IdentityPortrait } from './IdentityPortrait';
 import { PostAvatar, postName } from './PostAvatar';
+import { birthRanks, GENESIS_DURATION, personaBirth } from './genesis';
 
 const cream = new THREE.Color('#F4EDE4'), grey = new THREE.Color('#69676c'), red = new THREE.Color('#E9364A');
 const gold = new THREE.Color('#D6A84B');
@@ -18,8 +19,6 @@ const responseOrder = [...nodes].sort((a, b) => Math.hypot(a.x, a.y) - Math.hypo
 const rumourRanks = new Map(rumourOrder.map((id, i) => [id, i / nodes.length]));
 const responseRanks = new Map(responseOrder.map((id, i) => [id, i / nodes.length]));
 
-const birthOrder = [...nodes].sort((a, b) => hash(a.id + 817) - hash(b.id + 817));
-const birthRanks = new Map(birthOrder.map((node, rank) => [node.id, rank]));
 const pinCadences = nodes.map(n => ({
   offset: hash(n.id + 2701) * 18,
   period: 9 + hash(n.id + 4903) * 9,
@@ -156,7 +155,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
     const lookAt = new THREE.Vector3(0, 0.4, 0);
     let yaw = -0.16, pitch = 0.08, targetYaw = -0.16, targetPitch = 0.08, zoom = 1;
     let dragging = false, lastX = 0, lastY = 0, visualTime = 0, introTime = 0;
-    let frameElapsed = 0, lastElapsed = -1, slowFrames = 0;
+    let slowFrames = 0;
     resetView.current = () => { targetYaw = -0.16; targetPitch = 0.08; zoom = 1; cursorTarget.set(0, 0); };
     const origin = new THREE.Vector3();
     let width = 1, height = 1, raf = 0, previous = performance.now(), hoverId = -1;
@@ -177,7 +176,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         lastX = e.clientX; lastY = e.clientY; return;
       }
       const { state: s } = live.current;
-      if (s.step === 'identity' || getView(s).active || (s.step === 'society' && s.elapsed < 2.5)) return;
+      if (s.step === 'identity' || getView(s).active || (s.step === 'society' && s.elapsed < GENESIS_DURATION)) return;
       const rect = canvas.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
       const found = visiblePoints.find(p => Math.hypot(x - p.x, y - p.y) < Math.max(8, p.radius));
       hoverId = found?.id ?? -1;
@@ -225,8 +224,6 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
       const motionSpeed = 1 - 0.82 * strength;
       const motion = reduce ? 'reduced' : strength > 0.8 ? 'highlight' : 'ambient';
       if (container.dataset.motion !== motion) container.dataset.motion = motion;
-      if (s.elapsed !== lastElapsed) { frameElapsed = s.elapsed; lastElapsed = s.elapsed; }
-      else if (!pause && !document.hidden) frameElapsed = Math.min(s.elapsed + 0.1, frameElapsed + dt);
       if (!pause && !document.hidden) { if (!reduce) visualTime += dt * motionSpeed; if (s.step === 'identity') introTime += dt; }
       const t = visualTime;
       const smooth = reduce ? 1 : 1 - Math.exp(-dt * 5);
@@ -282,8 +279,8 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         const n = nodes[i], p = points[i];
         const rank = birthRanks.get(i)!;
         const seed = rank < 42;
-        const birth = reduce ? 1 : isIdentity ? (seed ? ease((introTime - rank * 0.024) / 0.18) : 0)
-          : seed ? 1 : ease((s.step === 'society' ? frameElapsed - (rank - 42) * 0.0105 : 3) / 0.16);
+        const birth = isIdentity ? (seed ? reduce ? 1 : ease((introTime - rank * 0.07) / 0.5) : 0)
+          : s.step === 'society' ? personaBirth(rank, s.elapsed, reduce) : 1;
         births[i] = birth;
         const change = v.progress === 1 ? 1 : ease((v.progress - ranks.get(i)!) * 8);
         color.copy(sentimentColor(v.from[i])).lerp(sentimentColor(v.to[i]), change);
@@ -302,7 +299,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         if (birth > 0.5) visiblePoints.push({ id: i, ...screen, radius });
         if (ctx && birth > 0) {
           ctx.fillStyle = ctx.shadowColor = `#${color.getHexString()}`;
-          ctx.shadowBlur = Math.max(3, radius * 2.5); ctx.globalAlpha = 0.72;
+          ctx.shadowBlur = Math.max(3, radius * 2.5); ctx.globalAlpha = 0.72 * birth;
           ctx.beginPath(); ctx.arc(screen.x, screen.y, Math.max(1.2, radius), 0, Math.PI * 2); ctx.fill();
           ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         }
@@ -321,7 +318,8 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         const age = ((reduce ? 0 : t) + cadence.offset) % cadence.period;
         const life = ease(age / 0.4) * ease((cadence.duration - age) / 0.65);
         const clearance = mobile ? 30 : 43;
-        const eligible = s.step !== 'identity' && births[n.id] > 0.95 && active?.node !== n.id
+        const pinsReady = s.step !== 'identity' && (s.step !== 'society' || s.elapsed >= GENESIS_DURATION);
+        const eligible = pinsReady && births[n.id] > 0.95 && active?.node !== n.id
           && life > 0 && pinCount < pinLimit
           && screen.x > clearance / 2 && screen.x < width - clearance / 2
           && screen.y > (mobile ? 38 : 50) && screen.y < height - 8
@@ -329,7 +327,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         const opacity = eligible ? (reduce ? 0.7 : life * (1 - 0.65 * strength)) : 0;
         if (eligible) { pinCount++; occupied.push({ ...screen, clearance }); }
         const previousOpacity = pinOpacities[n.id];
-        const nextOpacity = active?.node === n.id ? 0 : reduce ? opacity : pause || document.hidden ? previousOpacity : previousOpacity + (opacity - previousOpacity) * (1 - Math.exp(-dt * 9));
+        const nextOpacity = !pinsReady || active?.node === n.id ? 0 : reduce ? opacity : pause || document.hidden ? previousOpacity : previousOpacity + (opacity - previousOpacity) * (1 - Math.exp(-dt * 9));
         pinOpacities[n.id] = nextOpacity < 0.005 ? 0 : nextOpacity;
         if (pinOpacities[n.id] > 0 || previousOpacity > 0) {
           el.style.opacity = String(pinOpacities[n.id]);
@@ -362,7 +360,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
       const activityColor = tense ? red : cream;
       const energetic = s.step === 'rumour' && s.elapsed > 6 && s.elapsed < 14;
       const activityCount = energetic ? 42 : 12;
-      if (v.genesis > 0.9 && !reduce) for (let j = 0; j < activityCount; j++) {
+      if (!isIdentity && v.genesis === 1 && !reduce) for (let j = 0; j < activityCount; j++) {
         const beat = t * (energetic ? 1.25 : 0.36) + j * 0.63;
         const cycle = Math.floor(beat), frac = beat - cycle;
         const limit = s.step === 'rumour' ? Math.max(2, Math.floor(v.progress * nodes.length)) : nodes.length;
@@ -384,7 +382,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         pulse.scale.setScalar(0.5 + frac * 1.9);
         pulse.quaternion.copy(camera.quaternion);
         pulse.material.color.copy(activityColor);
-        pulse.material.opacity = reduce || births[order[rank]] < 0.99 || isIdentity ? 0 : (1 - frac) * 0.14 * (active ? 0.5 : 1);
+        pulse.material.opacity = reduce || births[order[rank]] < 0.99 || isIdentity || v.genesis < 1 ? 0 : (1 - frac) * 0.14 * (active ? 0.5 : 1);
       });
       ring.scale.setScalar(!reduce && s.running && s.elapsed < 3 && s.strategy !== 'silence' ? 1 + (s.elapsed % 1) * 9 : 1.5 + (reduce ? 0 : Math.sin(t) * 0.08));
       ring.quaternion.copy(camera.quaternion);
@@ -409,7 +407,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
     };
   }, []);
 
-  return <div ref={host} className={`graph ${state.step === 'identity' ? 'graph-intro' : ''}`} role="group" tabIndex={0} aria-label={`3D social network: ${reduced ? 229 : state.step === 'identity' ? 42 : Math.min(229, 42 + Math.floor(view.genesis * 187))} personas. ${view.metrics.supportive}% supportive, ${view.metrics.hostile}% hostile.`} data-renderer={fallback ? 'canvas-fallback' : 'webgl'}>
+  return <div ref={host} className={`graph ${state.step === 'identity' ? 'graph-intro' : ''}`} role="group" tabIndex={0} aria-label={`3D social network: ${view.personaCount} personas. ${view.metrics.supportive}% supportive, ${view.metrics.hostile}% hostile.`} data-genesis={state.step === 'society' && view.genesis < 1 ? 'creating' : 'complete'} data-renderer={fallback ? 'canvas-fallback' : 'webgl'}>
     {ambientLayer}
     <div ref={centre} className="celebrity-anchor"><div className="celebrity-mark" role="img" aria-label={portraitIndex < 0 ? 'You, at the centre of the society' : `You as the ${identities[portraitIndex].title.toLowerCase()}`}><IdentityPortrait index={portraitIndex} /></div></div>
     {event && <div ref={activePin} className={`node-avatar-pin highlight-avatar-pin ${state.step === 'rumour' ? 'pin-danger' : ''}`} data-node={event.node} role="img" aria-label={`${event.node === -1 ? 'You' : postName(event.node)}, active voice in the network`}>

@@ -1,9 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
 import { baselineSnapshot, crisisSnapshot, nodes, outcomes, responseSnapshots } from '../src/data';
 import { getView, initialState, reducer } from '../src/simulation';
+import { birthOrder, createdPersonaCount, GENESIS_DURATION, personaBirth, SOCIETY_READY_AT } from '../src/genesis';
 
 const visibleAmbientPins = (page: Page) => page.locator('.ambient-avatar-pin').evaluateAll(els => els
-  .filter(el => Number((el as HTMLElement).style.opacity) > 0.05)
+  .filter(el => Number((el as HTMLElement).style.opacity) > 0.05 && getComputedStyle(el).visibility === 'visible')
   .map(el => el.getAttribute('data-node')));
 
 test('all timelines restore the same population, sentiment and snapshot time', () => {
@@ -15,7 +16,7 @@ test('all timelines restore the same population, sentiment and snapshot time', (
   expect(s.step).toBe('society');
   expect(getView(s).history).toHaveLength(0);
   expect(reducer(s, { type: 'rumour' }).step).toBe('society');
-  s = reducer(s, { type: 'tick', dt: 11.57 });
+  s = reducer(s, { type: 'tick', dt: SOCIETY_READY_AT + 0.77 });
   expect(getView(s).history).toHaveLength(2);
   const before = s;
   s = reducer(s, { type: 'rumour' });
@@ -63,7 +64,69 @@ test('all timelines restore the same population, sentiment and snapshot time', (
   expect(reducer(s, { type: 'restart' })).toEqual(initialState);
 });
 
+test('genesis creates a varied population before any audience activity', () => {
+  const society = reducer(reducer(initialState, { type: 'identity', index: 0 }), { type: 'enter' });
+  expect(createdPersonaCount(0)).toBe(0);
+  expect(createdPersonaCount(GENESIS_DURATION)).toBe(nodes.length);
+  expect(new Set(birthOrder.map(n => n.id)).size).toBe(nodes.length);
+  expect(new Set(birthOrder.slice(0, 5).map(n => n.category)).size).toBe(5);
+  let previousCount = 0;
+  for (let elapsed = 0; elapsed < GENESIS_DURATION; elapsed += 0.2) {
+    const view = getView({ ...society, elapsed });
+    expect(view.personaCount).toBeGreaterThanOrEqual(previousCount);
+    expect(view.personaCount).toBeLessThan(nodes.length);
+    expect(view.active).toBeUndefined();
+    expect(view.history).toHaveLength(0);
+    expect(view.activity.posts).toBe(0);
+    // The counter reports completed births in both motion modes.
+    expect(birthOrder.filter((_, rank) => personaBirth(rank, elapsed, true) === 1)).toHaveLength(view.personaCount);
+    previousCount = view.personaCount;
+  }
+  expect(personaBirth(0, 0.7, false)).toBeGreaterThan(0);
+  expect(personaBirth(0, 0.7, false)).toBeLessThan(1);
+});
+
+test('genesis counts, previews and pins follow pause, live transition and restart', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Breakout actor/ }).click();
+  await expect(page.locator('.history-heading h2')).toHaveText('Persona genesis');
+  await expect(page.getByTestId('persona-count')).toHaveText('0');
+  await expect(page.getByRole('progressbar', { name: 'Personas created' })).toHaveAttribute('aria-valuenow', '0');
+  expect(await visibleAmbientPins(page)).toEqual([]);
+  await expect(page.locator('.genesis-persona')).toHaveCount(3);
+  const firstPersonas = await page.locator('.genesis-persona').evaluateAll(els => els.map(el => el.getAttribute('data-node')));
+  const firstCount = Number(await page.getByTestId('persona-count').innerText());
+  expect(firstCount).toBeGreaterThan(0);
+  expect(firstCount).toBeLessThan(229);
+  expect(await visibleAmbientPins(page)).toEqual([]);
+  await page.getByRole('button', { name: 'Pause simulation' }).click();
+  const pausedCount = await page.getByTestId('persona-count').innerText();
+  const pausedPersonas = await page.locator('.genesis-personas').innerText();
+  await page.waitForTimeout(900);
+  await expect(page.getByTestId('persona-count')).toHaveText(pausedCount);
+  await expect(page.locator('.genesis-personas')).toHaveText(pausedPersonas, { useInnerText: true });
+  expect(await visibleAmbientPins(page)).toEqual([]);
+  await page.screenshot({ path: 'test-results/persona-genesis-desktop.png' });
+  await page.getByRole('button', { name: 'Resume simulation' }).click();
+  await expect.poll(() => page.locator('.genesis-persona').evaluateAll(els => els.map(el => el.getAttribute('data-node')))).not.toEqual(firstPersonas);
+  await expect(page.locator('.history-heading h2')).toHaveText('Society is live');
+  await expect(page.locator('.genesis-complete')).toContainText('229 personas');
+  await expect(page.locator('.graph')).toHaveAttribute('aria-label', /229 personas/);
+  await expect(page.locator('.genesis-build')).toHaveCount(0);
+  await expect.poll(async () => (await visibleAmbientPins(page)).length).toBeGreaterThan(0);
+  await page.screenshot({ path: 'test-results/society-live-desktop.png' });
+  await page.getByRole('button', { name: 'Change identity' }).click();
+  await expect.poll(() => visibleAmbientPins(page)).toEqual([]);
+  await page.getByRole('button', { name: /Pop star/ }).click();
+  await expect(page.getByTestId('persona-count')).toHaveText('0');
+  expect(await visibleAmbientPins(page)).toEqual([]);
+});
+
 test('desktop: genesis, mutations, all four response journeys and comparison', async ({ page }) => {
+  // This journey plays genesis, two rumour passes and five responses in real time.
+  test.setTimeout(210_000);
+  // Keep the history scrollable after removing its explanatory header and footer.
+  await page.setViewportSize({ width: 1440, height: 860 });
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
@@ -74,7 +137,7 @@ test('desktop: genesis, mutations, all four response journeys and comparison', a
   await expect(page.getByRole('img', { name: 'You as the breakout actor' })).toBeVisible();
   await page.screenshot({ path: 'test-results/identity-desktop.png' });
   await page.getByRole('button', { name: /Breakout actor/ }).click();
-  await expect(page.getByRole('heading', { name: 'Good press travels.' })).toBeVisible();
+  await expect(page.locator('.history-heading h2')).toHaveText('Persona genesis');
   await expect(page.locator('.event-history')).toContainText('One to watch.');
   await expect(page.locator('.highlight-avatar-pin')).toHaveAttribute('data-node', '0');
   await expect(page.locator('.highlight-avatar-pin .logo-wire')).toBeVisible();
@@ -155,6 +218,18 @@ test('mobile and reduced motion preserve the story and accessible controls', asy
   await page.screenshot({ path: 'test-results/identity-mobile.png', fullPage: true });
   await page.getByRole('button', { name: /Pop star/ }).click();
   await expect(page.getByRole('img', { name: 'You as the pop star' })).toBeVisible();
+  await expect(page.locator('.history-heading h2')).toHaveText('Persona genesis');
+  await expect(page.locator('.genesis-persona')).toHaveCount(3);
+  expect(await visibleAmbientPins(page)).toEqual([]);
+  await page.getByRole('button', { name: 'Pause simulation' }).click();
+  const genesisCount = await page.getByTestId('persona-count').innerText();
+  await expect(page.getByTestId('persona-count')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('.genesis-persona').last()).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: 'test-results/persona-genesis-mobile.png', fullPage: true });
+  await page.waitForTimeout(400);
+  await expect(page.getByTestId('persona-count')).toHaveText(genesisCount);
+  await page.getByRole('button', { name: 'Resume simulation' }).click();
+  await expect(page.locator('.history-heading h2')).toHaveText('Society is live');
   await expect(page.locator('.history-event')).toHaveCount(1);
   await page.getByRole('button', { name: 'Pause simulation' }).click();
   await expect(page.locator('.history-status')).toHaveText('Paused');

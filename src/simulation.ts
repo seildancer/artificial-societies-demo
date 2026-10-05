@@ -1,7 +1,8 @@
 import { baseline, baselineSnapshot, crisis, crisisSnapshot, outcomes, responseSnapshots, storyEvents, type Metrics, type Strategy } from './data';
+import { createdPersonaCount, GENESIS_DURATION, SOCIETY_READY_AT } from './genesis';
 export type Step = 'identity' | 'society' | 'rumour' | 'response' | 'outcome';
 export interface State { step: Step; identity: number; elapsed: number; strategy?: Strategy; running: boolean; societyTime: number; rumourTime: number; history: Strategy[]; selecting: boolean }
-export const initialState: State = { step: 'identity', identity: 0, elapsed: 0, running: false, societyTime: 11, rumourTime: 15, history: [], selecting: false };
+export const initialState: State = { step: 'identity', identity: 0, elapsed: 0, running: false, societyTime: SOCIETY_READY_AT, rumourTime: 15, history: [], selecting: false };
 export type Action = { type: 'tick'; dt: number } | { type: 'identity'; index: number } | { type: 'enter' } | { type: 'rumour' } | { type: 'respond' } | { type: 'strategy'; strategy: Strategy } | { type: 'back' } | { type: 'restart' };
 export function reducer(s: State, a: Action): State {
   switch (a.type) {
@@ -13,7 +14,7 @@ export function reducer(s: State, a: Action): State {
     }
     case 'identity': return s.step === 'identity' && !s.selecting ? { ...s, identity: a.index, selecting: true } : s;
     case 'enter': return s.selecting ? { ...s, step: 'society', elapsed: 0, selecting: false } : s;
-    case 'rumour': return s.step === 'society' && s.elapsed >= 10.8 ? { ...s, step: 'rumour', elapsed: 0, societyTime: s.elapsed } : s;
+    case 'rumour': return s.step === 'society' && s.elapsed >= SOCIETY_READY_AT ? { ...s, step: 'rumour', elapsed: 0, societyTime: s.elapsed } : s;
     case 'respond': return s.step === 'rumour' && s.elapsed >= 14.6 ? { ...s, step: 'response', elapsed: s.elapsed, rumourTime: s.elapsed, running: false } : s;
     case 'strategy': return s.step === 'response' && !s.running ? { ...s, strategy: a.strategy, elapsed: 0, running: true } : s;
     case 'back':
@@ -55,9 +56,11 @@ export function getView(s: State) {
       ...((s.step === 'response' && s.running) || s.step === 'outcome'
         ? storyEvents('response', s.identity, s.strategy).filter(e => e.at <= s.elapsed).map(e => ({ ...e, phase: 'response' as const })) : []),
     ];
-  const priorPosts = Math.floor(s.societyTime * 1.2);
+  const priorPosts = Math.floor(Math.max(0, s.societyTime - GENESIS_DURATION) * 1.2);
   const rumourPosts = Math.floor((choosing ? s.elapsed : s.rumourTime) * 8.4);
-  const posts = s.step === 'society' ? Math.floor(s.elapsed * 1.2) : s.step === 'rumour' ? priorPosts + Math.floor(s.elapsed * 8.4) : priorPosts + rumourPosts + (choosing ? 0 : Math.floor(s.elapsed * (s.strategy === 'silence' ? 1.5 : 4.8)));
+  const posts = s.step === 'society' ? Math.floor(Math.max(0, s.elapsed - GENESIS_DURATION) * 1.2) : s.step === 'rumour' ? priorPosts + Math.floor(s.elapsed * 8.4) : priorPosts + rumourPosts + (choosing ? 0 : Math.floor(s.elapsed * (s.strategy === 'silence' ? 1.5 : 4.8)));
   const activity = { posts, reactions: posts * 4, reposts: Math.floor(posts * 0.7), conversations: Math.floor(posts / 5) };
-  return { active, history, from, to, progress, metrics, outcome, activity, genesis: s.step === 'society' ? clamp(s.elapsed / 2.5) : 1 };
+  const genesis = s.step === 'society' ? clamp(s.elapsed / GENESIS_DURATION) : 1;
+  const personaCount = s.step === 'identity' ? 42 : s.step === 'society' ? createdPersonaCount(s.elapsed) : 229;
+  return { active, history, from, to, progress, metrics, outcome, activity, genesis, personaCount };
 }

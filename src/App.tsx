@@ -5,6 +5,7 @@ import { IdentityPortrait } from './IdentityPortrait';
 import { Brand } from './Brand';
 import { EventHistory } from './EventHistory';
 import { getView, initialState, reducer, type Step } from './simulation';
+import { SOCIETY_READY_AT } from './genesis';
 
 const steps: Step[] = ['identity', 'society', 'rumour', 'response', 'outcome'];
 const stepNames = ['Identity', 'Society', 'Rumour', 'Response', 'Outcome'];
@@ -20,7 +21,7 @@ export function App() {
   const view = getView(state);
   const stepIndex = steps.indexOf(state.step);
   const [previewIdentity, setPreviewIdentity] = useState(-1);
-  const societyReady = state.step === 'society' && state.elapsed >= 10.8;
+  const societyReady = state.step === 'society' && state.elapsed >= SOCIETY_READY_AT;
   const rumourReady = state.step === 'rumour' && state.elapsed >= 14.6;
   const choosing = state.step === 'response' && !state.running;
 
@@ -89,11 +90,11 @@ export function App() {
 
         <section className={`interaction ${choosing ? 'response-choices' : ''} ${state.step === 'outcome' ? 'outcome-interaction' : ''}`} ref={panel} tabIndex={-1} aria-label={`${stepNames[stepIndex]} controls`}>
           {state.step === 'society' && <>
-            <div className="interaction-copy"><h2>{societyReady ? 'Your audience is listening.' : 'Good press travels.'}</h2><p>Meet the voices around you before introducing a rumour.</p></div>
+            <div className="interaction-copy"><h2>{view.genesis < 1 ? 'Persona genesis' : societyReady ? 'Your audience is listening.' : 'Society is live'}</h2></div>
             <div className="actions"><button className="text-button" onClick={back}>← Change identity</button><button className="primary danger-button" disabled={!societyReady} onClick={() => { setPaused(false); dispatch({ type: 'rumour' }); }}>Introduce a rumour<Arrow /></button></div>
           </>}
           {state.step === 'rumour' && <>
-            <div className="interaction-copy"><h2>{rumourReady ? 'Four moments. A different story.' : 'Watch a rumour become a reputation.'}</h2><p>{rumourReady ? 'Review how the story changed, then decide what to say.' : 'Follow the key moments as people pass the story on.'}</p></div>
+            <div className="interaction-copy"><h2>{rumourReady ? 'Four moments. A different story.' : 'Watch a rumour become a reputation.'}</h2></div>
             <div className="actions"><button className="text-button" onClick={back}>← Before the rumour</button><button className="primary" disabled={!rumourReady} onClick={() => { setPaused(false); dispatch({ type: 'respond' }); }}>Choose a response<Arrow /></button></div>
           </>}
           {choosing && <>

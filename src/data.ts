@@ -63,8 +63,8 @@ export interface StoryEvent { at: number; duration: number; node: number; role?:
 export function storyEvents(phase: string, identity: number, strategy?: Strategy): StoryEvent[] {
   const person = identities[identity];
   if (phase === 'society') return [
-    { at: 3.1, duration: 3.1, node: 0, text: `The ${person.title.toLowerCase()} has apparently joined ${person.context}. One to watch.`, reaction: '@ScreenTea reposted · “Huge if true.”', impact: '14 personas influenced · Reach +2.1%', kind: 'A little good press', targets: [3, 46, 47, 164] },
-    { at: 7, duration: 3.1, node: 146, text: `Working with the ${person.title.toLowerCase()} has been a highlight. Some very good things on the way.`, reaction: 'Fans reacted positively · 8 new follows', impact: '21 personas influenced · Trust rising', kind: 'Word gets around', targets: [147, 151, 70, 170] },
+    { at: 6.6, duration: 3.1, node: 0, text: `The ${person.title.toLowerCase()} has apparently joined ${person.context}. One to watch.`, reaction: '@ScreenTea reposted · “Huge if true.”', impact: '14 personas influenced · Reach +2.1%', kind: 'A little good press', targets: [3, 46, 47, 164] },
+    { at: 10.5, duration: 3.1, node: 146, text: `Working with the ${person.title.toLowerCase()} has been a highlight. Some very good things on the way.`, reaction: 'Fans reacted positively · 8 new follows', impact: '21 personas influenced · Trust rising', kind: 'Word gets around', targets: [147, 151, 70, 170] },
   ];
   if (phase === 'rumour') return [
     { at: 0.3, duration: 3, node: 2, text: `Heard the ${person.title.toLowerCase()} left rehearsal after a huge argument with the director. Someone on set needs to talk.`, reaction: 'Unverified source · First 2 reposts', impact: 'One post. A whole new narrative.', kind: '01 / The spark', targets: [3, 7] },
