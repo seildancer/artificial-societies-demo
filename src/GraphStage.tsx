@@ -7,6 +7,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clusters, hash, identities, nodes } from './data';
 import { getView, type State } from './simulation';
 import { IdentityPortrait } from './IdentityPortrait';
+import { PostAvatar, postName } from './PostAvatar';
 
 const cream = new THREE.Color('#F4EDE4'), grey = new THREE.Color('#69676c'), red = new THREE.Color('#E9364A');
 const gold = new THREE.Color('#D6A84B');
@@ -27,6 +28,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
   const host = useRef<HTMLDivElement>(null);
   const resetView = useRef(() => {});
   const centre = useRef<HTMLDivElement>(null);
+  const activePin = useRef<HTMLDivElement>(null);
   const clusterLabels = useRef<(HTMLDivElement | null)[]>([]);
   const live = useRef({ state, reduced, paused });
   live.current = { state, reduced, paused };
@@ -243,6 +245,13 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
       camera.position.z += (targetZ - camera.position.z) * lerp;
       camera.lookAt(lookAt);
       camera.updateMatrixWorld();
+      if (activePin.current && focus) {
+        const anchor = project(focus);
+        // Attach your own post to the edge of the larger central portrait.
+        if (active?.node === -1) anchor.y -= window.innerWidth <= 760 ? 23 : 30;
+        activePin.current.style.transform = `translate(${anchor.x}px, ${anchor.y}px)`;
+        activePin.current.style.opacity = String(reduce ? 1 : strength);
+      }
       const relevant = new Set(active ? [active.node, ...active.targets] : []);
       const rumourState = s.step === 'rumour' || (s.step === 'response' && !s.running);
       const order = rumourState ? rumourOrder : responseOrder;
@@ -352,6 +361,9 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
 
   return <div ref={host} className={`graph ${state.step === 'identity' ? 'graph-intro' : ''}`} role="group" tabIndex={0} aria-label={`3D social network: ${reduced ? 229 : state.step === 'identity' ? 42 : Math.min(229, 42 + Math.floor(view.genesis * 187))} personas. ${view.metrics.supportive}% supportive, ${view.metrics.hostile}% hostile.`} data-renderer={fallback ? 'canvas-fallback' : 'webgl'}>
     <div ref={centre} className="celebrity-anchor"><div className="celebrity-mark" role="img" aria-label={portraitIndex < 0 ? 'You, at the centre of the society' : `You as the ${identities[portraitIndex].title.toLowerCase()}`}><IdentityPortrait index={portraitIndex} /></div></div>
+    {event && <div ref={activePin} className={`node-avatar-pin ${state.step === 'rumour' ? 'pin-danger' : ''}`} data-node={event.node} role="img" aria-label={`${event.node === -1 ? 'You' : postName(event.node)}, active voice in the network`}>
+      <div className="node-avatar-pin-mark"><PostAvatar node={event.node} identity={state.identity} /></div>
+    </div>}
     {clusters.map((c, i) => <div key={c.name} ref={el => { clusterLabels.current[i] = el; }} className="cluster-label">{c.name}</div>)}
     {hover && !event && <div className="node-tooltip" style={{ left: hover.x, top: hover.y }}>{nodes[hover.id].role}<small>{nodes[hover.id].category} · {view.to[hover.id] > 0 ? 'Supportive' : view.to[hover.id] < 0 ? 'Hostile' : 'Uncertain'} · {nodes[hover.id].influence > .66 ? 'High' : nodes[hover.id].influence > .33 ? 'Medium' : 'Low'} influence</small></div>}
   </div>;

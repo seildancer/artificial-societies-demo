@@ -72,11 +72,17 @@ test('desktop: genesis, mutations, all four response journeys and comparison', a
   await page.getByRole('button', { name: /Breakout actor/ }).click();
   await expect(page.getByRole('heading', { name: 'Good press travels.' })).toBeVisible();
   await expect(page.locator('.event-history')).toContainText('One to watch.');
+  await expect(page.locator('.node-avatar-pin')).toHaveAttribute('data-node', '0');
+  await expect(page.locator('.node-avatar-pin .logo-wire')).toBeVisible();
+  await expect(page.locator('.node-avatar-pin')).toHaveCSS('opacity', '1');
   await page.screenshot({ path: 'test-results/society-highlight.png' });
   await expect(page.getByRole('button', { name: 'Introduce a rumour' })).toBeEnabled();
+  await expect(page.locator('.node-avatar-pin')).toHaveCount(0);
   await page.screenshot({ path: 'test-results/society-desktop.png' });
   await page.getByRole('button', { name: 'Introduce a rumour' }).click();
   await expect(page.locator('.event-history')).toContainText('Someone on set needs to talk.');
+  await expect(page.locator('.node-avatar-pin')).toHaveAttribute('data-node', '2');
+  await expect(page.locator('.node-avatar-pin .logo-hours')).toBeVisible();
   await expect(page.locator('.event-history')).toContainText('stormed off set. Not a great look');
   await expect(page.locator('.event-history')).toContainText('CHAOS ON SET');
   await expect(page.locator('.history-event')).toHaveCount(3);
@@ -103,6 +109,8 @@ test('desktop: genesis, mutations, all four response journeys and comparison', a
   for (const o of outcomes) {
     await expect(page.locator('.sentiment-key')).toContainText('31% supportive');
     await page.getByRole('button', { name: new RegExp(o.title.replace('+', '\\+')) }).click();
+    await expect(page.locator('.node-avatar-pin')).toHaveAttribute('data-node', '-1');
+    await expect(page.locator('.node-avatar-pin .portrait-0')).toBeVisible();
     await expect(page.locator('.event-history')).toContainText(o.reactions[0]);
     await expect(page.locator('.event-history')).toContainText(o.reactions[1]);
     await expect(page.locator('.event-history')).toContainText(o.reactions[2]);
@@ -138,8 +146,12 @@ test('mobile and reduced motion preserve the story and accessible controls', asy
   await expect(page.locator('.history-event')).toHaveCount(1);
   await page.getByRole('button', { name: 'Pause simulation' }).click();
   await expect(page.locator('.history-status')).toHaveText('Paused');
+  await expect(page.locator('.node-avatar-pin')).toHaveAttribute('data-node', '0');
+  await expect(page.locator('.node-avatar-pin')).toHaveCSS('opacity', '1');
+  await expect(page.locator('.node-avatar-pin .logo-wire')).toBeInViewport();
   const record = await page.locator('.history-list').innerText();
   await page.waitForTimeout(4200);
+  await expect(page.locator('.node-avatar-pin')).toHaveCSS('opacity', '1');
   await expect(page.locator('.history-list')).toHaveText(record, { useInnerText: true });
   await page.getByRole('button', { name: 'Resume simulation' }).click();
   await page.getByRole('button', { name: 'Introduce a rumour' }).click();
@@ -196,4 +208,6 @@ test('a browser without WebGL retains the canvas story and keyboard selection', 
   await page.keyboard.press('Enter');
   await expect(page.locator('.experience')).toHaveAttribute('data-step', 'society');
   await expect(page.locator('.event-history')).toContainText('veteran actor');
+  await expect(page.locator('.node-avatar-pin')).toHaveAttribute('data-node', '0');
+  await expect(page.locator('.node-avatar-pin .logo-wire')).toBeInViewport();
 });
