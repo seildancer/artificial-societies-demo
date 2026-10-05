@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -20,6 +20,12 @@ const responseRanks = new Map(responseOrder.map((id, i) => [id, i / nodes.length
 
 const birthOrder = [...nodes].sort((a, b) => hash(a.id + 817) - hash(b.id + 817));
 const birthRanks = new Map(birthOrder.map((node, rank) => [node.id, rank]));
+const pinCadences = nodes.map(n => ({
+  offset: hash(n.id + 2701) * 18,
+  period: 9 + hash(n.id + 4903) * 9,
+  duration: 2.1 + hash(n.id + 6101) * 2.4,
+}));
+const pinOrder = [...nodes].sort((a, b) => hash(a.id + 7907) - hash(b.id + 7907));
 const relationships = nodes.flatMap(n => nodes.filter(b => b.id !== n.id && b.category === n.category)
   .sort((a, b) => Math.hypot(a.x-n.x,a.y-n.y,(a.z-n.z)*2) - Math.hypot(b.x-n.x,b.y-n.y,(b.z-n.z)*2))
   .slice(0, 3).filter(b => b.id > n.id).map(b => [n.id, b.id] as const));
@@ -29,6 +35,7 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
   const resetView = useRef(() => {});
   const centre = useRef<HTMLDivElement>(null);
   const activePin = useRef<HTMLDivElement>(null);
+  const ambientPins = useRef<(HTMLDivElement | null)[]>([]);
   const clusterLabels = useRef<(HTMLDivElement | null)[]>([]);
   const live = useRef({ state, reduced, paused });
   live.current = { state, reduced, paused };
@@ -36,6 +43,12 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
   const [fallback, setFallback] = useState(false);
   const view = getView(state);
   const event = view.active;
+  // Keep the portrait layer mounted while the renderer animates its positions.
+  const ambientLayer = useMemo(() => <div className="ambient-pin-layer" aria-hidden="true">
+    {nodes.map(n => <div key={n.id} ref={el => { ambientPins.current[n.id] = el; }} className="node-avatar-pin ambient-avatar-pin" data-node={n.id}>
+      <div className="node-avatar-pin-mark"><PostAvatar node={n.id} identity={0} /></div>
+    </div>)}
+  </div>, []);
 
   useEffect(() => {
     const container = host.current!;
@@ -136,6 +149,8 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
     const points = nodes.map(n => new THREE.Vector3(n.x, n.y, n.z));
     const displayedColors = nodes.map(() => cream.clone());
     const births = new Float32Array(nodes.length);
+    const pinOpacities = new Float32Array(nodes.length);
+    const screenPoints: { x: number; y: number }[] = [];
     const rotation = new THREE.Quaternion();
     const cursorTarget = new THREE.Vector2(), cursorTilt = new THREE.Vector2();
     const lookAt = new THREE.Vector3(0, 0.4, 0);
@@ -206,14 +221,18 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
       const dt = Math.min(0.05, (now - previous) / 1000); previous = now;
       const { state: s, reduced: reduce, paused: pause } = live.current;
       const v = getView(s), active = v.active;
+      const strength = active && !reduce ? ease((s.elapsed - active.at) / 0.85) * ease((active.at + active.duration - s.elapsed) / 0.65) : 0;
+      const motionSpeed = 1 - 0.82 * strength;
+      const motion = reduce ? 'reduced' : strength > 0.8 ? 'highlight' : 'ambient';
+      if (container.dataset.motion !== motion) container.dataset.motion = motion;
       if (s.elapsed !== lastElapsed) { frameElapsed = s.elapsed; lastElapsed = s.elapsed; }
       else if (!pause && !document.hidden) frameElapsed = Math.min(s.elapsed + 0.1, frameElapsed + dt);
-      if (!pause && !document.hidden) { if (!reduce) visualTime += dt; if (s.step === 'identity') introTime += dt; }
+      if (!pause && !document.hidden) { if (!reduce) visualTime += dt * motionSpeed; if (s.step === 'identity') introTime += dt; }
       const t = visualTime;
       const smooth = reduce ? 1 : 1 - Math.exp(-dt * 5);
       yaw += (targetYaw - yaw) * smooth; pitch += (targetPitch - pitch) * smooth;
       if (reduce) { cursorTilt.set(0, 0); cursorTarget.set(0, 0); }
-      else if (!pause && !dragging) cursorTilt.lerp(cursorTarget, 1 - Math.exp(-dt * 3.6));
+      else if (!pause && !dragging) cursorTilt.lerp(cursorTarget, 1 - Math.exp(-dt * 3.6 * motionSpeed));
       rotation.setFromEuler(new THREE.Euler(pitch + cursorTilt.y + Math.sin(t * 0.09) * 0.045, yaw + cursorTilt.x + Math.sin(t * 0.08) * 0.13, 0));
       const isIdentity = s.step === 'identity';
       const small = width < 650;
@@ -229,7 +248,6 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
       let targetX = 0;
       let targetY = 0.7, targetZ = fullDistance * zoom;
       const focus = active ? active.node === -1 ? origin : points[active.node] : undefined;
-      const strength = active && !reduce ? ease((s.elapsed - active.at) / 0.55) * ease((active.at + active.duration - s.elapsed) / 0.55) : 0;
       focusRing.visible = Boolean(focus);
       if (focus) {
         focusRing.position.copy(focus);
@@ -238,11 +256,13 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         focusMaterial.color.copy(s.step === 'rumour' ? red : gold);
         focusMaterial.opacity = reduce ? 0.7 : strength * 0.8;
       }
-      if (focus) { targetX += focus.x * 0.37 * strength; targetY += (focus.y - targetY) * 0.37 * strength; targetZ -= Math.min(3.4, targetZ * 0.2) * strength; }
+      if (focus) { targetX += focus.x * 0.65 * strength; targetY += (focus.y - targetY) * 0.65 * strength; targetZ *= 1 - 0.3 * strength; }
       const lerp = reduce ? 1 : 1 - Math.exp(-dt * 4.8);
       camera.position.x += (targetX - camera.position.x) * lerp;
       camera.position.y += (targetY - camera.position.y) * lerp;
       camera.position.z += (targetZ - camera.position.z) * lerp;
+      const aim = focus ?? origin;
+      lookAt.lerp(vec.set(aim.x * 0.7 * strength, 0.4 + (aim.y - 0.4) * 0.7 * strength, aim.z * 0.7 * strength), lerp);
       camera.lookAt(lookAt);
       camera.updateMatrixWorld();
       if (activePin.current && focus) {
@@ -278,12 +298,42 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
         glowColors.set([color.r * birth, color.g * birth, color.b * birth], i * 3);
         glowSizes[i] = size * 7;
         const screen = project(p); const radius = size / (camera.position.z - p.z) * height * 1.3;
+        screenPoints[i] = screen;
         if (birth > 0.5) visiblePoints.push({ id: i, ...screen, radius });
         if (ctx && birth > 0) {
           ctx.fillStyle = ctx.shadowColor = `#${color.getHexString()}`;
           ctx.shadowBlur = Math.max(3, radius * 2.5); ctx.globalAlpha = 0.72;
           ctx.beginPath(); ctx.arc(screen.x, screen.y, Math.max(1.2, radius), 0, Math.PI * 2); ctx.fill();
           ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+        }
+      }
+      const mobile = window.innerWidth <= 760;
+      const pinLimit = mobile ? 7 : 26;
+      const occupied = [{ ...project(origin), clearance: mobile ? 40 : 55 }];
+      if (focus) occupied.push({ ...project(focus), clearance: mobile ? 45 : 65 });
+      let pinCount = 0;
+      for (const n of pinOrder) {
+        const el = ambientPins.current[n.id];
+        if (!el) continue;
+        const screen = screenPoints[n.id];
+        const cadence = pinCadences[n.id];
+        // A fixed sample replaces recurring appearances in reduced motion.
+        const age = ((reduce ? 0 : t) + cadence.offset) % cadence.period;
+        const life = ease(age / 0.4) * ease((cadence.duration - age) / 0.65);
+        const clearance = mobile ? 30 : 43;
+        const eligible = s.step !== 'identity' && births[n.id] > 0.95 && active?.node !== n.id
+          && life > 0 && pinCount < pinLimit
+          && screen.x > clearance / 2 && screen.x < width - clearance / 2
+          && screen.y > (mobile ? 38 : 50) && screen.y < height - 8
+          && !occupied.some(p => Math.abs(p.x - screen.x) < p.clearance && Math.abs(p.y - screen.y) < p.clearance + 12);
+        const opacity = eligible ? (reduce ? 0.7 : life * (1 - 0.65 * strength)) : 0;
+        if (eligible) { pinCount++; occupied.push({ ...screen, clearance }); }
+        const previousOpacity = pinOpacities[n.id];
+        const nextOpacity = active?.node === n.id ? 0 : reduce ? opacity : pause || document.hidden ? previousOpacity : previousOpacity + (opacity - previousOpacity) * (1 - Math.exp(-dt * 9));
+        pinOpacities[n.id] = nextOpacity < 0.005 ? 0 : nextOpacity;
+        if (pinOpacities[n.id] > 0 || previousOpacity > 0) {
+          el.style.opacity = String(pinOpacities[n.id]);
+          el.style.transform = `translate(${screen.x}px, ${screen.y}px)`;
         }
       }
       glowGeometry.attributes.position.needsUpdate = true;
@@ -360,8 +410,9 @@ export function GraphStage({ state, reduced, paused, portraitIndex }: { state: S
   }, []);
 
   return <div ref={host} className={`graph ${state.step === 'identity' ? 'graph-intro' : ''}`} role="group" tabIndex={0} aria-label={`3D social network: ${reduced ? 229 : state.step === 'identity' ? 42 : Math.min(229, 42 + Math.floor(view.genesis * 187))} personas. ${view.metrics.supportive}% supportive, ${view.metrics.hostile}% hostile.`} data-renderer={fallback ? 'canvas-fallback' : 'webgl'}>
+    {ambientLayer}
     <div ref={centre} className="celebrity-anchor"><div className="celebrity-mark" role="img" aria-label={portraitIndex < 0 ? 'You, at the centre of the society' : `You as the ${identities[portraitIndex].title.toLowerCase()}`}><IdentityPortrait index={portraitIndex} /></div></div>
-    {event && <div ref={activePin} className={`node-avatar-pin ${state.step === 'rumour' ? 'pin-danger' : ''}`} data-node={event.node} role="img" aria-label={`${event.node === -1 ? 'You' : postName(event.node)}, active voice in the network`}>
+    {event && <div ref={activePin} className={`node-avatar-pin highlight-avatar-pin ${state.step === 'rumour' ? 'pin-danger' : ''}`} data-node={event.node} role="img" aria-label={`${event.node === -1 ? 'You' : postName(event.node)}, active voice in the network`}>
       <div className="node-avatar-pin-mark"><PostAvatar node={event.node} identity={state.identity} /></div>
     </div>}
     {clusters.map((c, i) => <div key={c.name} ref={el => { clusterLabels.current[i] = el; }} className="cluster-label">{c.name}</div>)}

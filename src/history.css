@@ -21,6 +21,7 @@
   pointer-events: none;
 }
 .node-avatar-pin.pin-danger { --pin-color: #ed8a98; }
+.ambient-pin-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .node-avatar-pin-mark {
   position: absolute;
   bottom: 14px;
@@ -45,6 +46,13 @@
   background: var(--pin-color);
 }
 .node-avatar-pin .identity-portrait, .node-avatar-pin .publisher-logo { width: 38px; height: 38px; border-radius: 50%; }
+.ambient-avatar-pin { --pin-color: #aa9f8d; }
+.ambient-avatar-pin .node-avatar-pin-mark { width: 30px; height: 30px; bottom: 8px; border-width: 1px; box-shadow: 0 0 0 2px #17171988, 0 3px 10px #0005; }
+.ambient-avatar-pin .node-avatar-pin-mark:after { height: 8px; }
+.ambient-avatar-pin .identity-portrait, .ambient-avatar-pin .publisher-logo { width: 26px; height: 26px; font-size: 12px; }
+.highlight-avatar-pin .node-avatar-pin-mark { width: 58px; height: 58px; bottom: 18px; box-shadow: 0 0 0 5px #171719aa, 0 0 28px #cbb58e33, 0 6px 24px #0008; }
+.highlight-avatar-pin .node-avatar-pin-mark:after { height: 18px; }
+.highlight-avatar-pin .identity-portrait, .highlight-avatar-pin .publisher-logo { width: 48px; height: 48px; }
 .event-history {
   position: absolute;
   z-index: 3;
@@ -115,6 +123,12 @@
   .node-avatar-pin-mark { width: 36px; height: 36px; bottom: 10px; }
   .node-avatar-pin-mark:after { height: 10px; }
   .node-avatar-pin .identity-portrait, .node-avatar-pin .publisher-logo { width: 28px; height: 28px; }
+  .ambient-avatar-pin .node-avatar-pin-mark { width: 22px; height: 22px; bottom: 6px; }
+  .ambient-avatar-pin .node-avatar-pin-mark:after { height: 6px; }
+  .ambient-avatar-pin .identity-portrait, .ambient-avatar-pin .publisher-logo { width: 18px; height: 18px; font-size: 9px; }
+  .highlight-avatar-pin .node-avatar-pin-mark { width: 44px; height: 44px; bottom: 12px; }
+  .highlight-avatar-pin .node-avatar-pin-mark:after { height: 12px; }
+  .highlight-avatar-pin .identity-portrait, .highlight-avatar-pin .publisher-logo { width: 36px; height: 36px; }
   .experience:not(.step-identity):not(.step-outcome) .stage { height: auto; min-height: 0; padding: 280px 24px 0; }
   .experience:not(.step-identity):not(.step-outcome) .sentiment { left: 24px; right: 24px; top: 24px; }
   .experience:not(.step-identity):not(.step-outcome) .graph { top: 82px; left: 0; right: 0; bottom: auto !important; height: 190px; }
