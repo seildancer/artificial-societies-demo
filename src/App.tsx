@@ -11,15 +11,11 @@ import { consequenceStats, overallImpact } from './consequences';
 const steps: Step[] = ['identity', 'society', 'rumour', 'response', 'outcome'];
 const stepNames = ['Identity', 'Society', 'Rumour', 'Response', 'Outcome'];
 const signed = (n: number) => `${n > 0 ? '+' : ''}${n}`;
-function OverallImpact({ score, scale }: { score: number; scale: number }) {
+function OverallImpact({ score }: { score: number }) {
   const direction = score > 0 ? 'positive' : score < 0 ? 'negative' : 'unchanged';
-  const width = Math.abs(score) / scale * 50;
   return <section className={`overall-impact impact-${direction}`} aria-label="Overall impact">
     <div className="overall-heading"><span>Overall impact</span><span>{score > 0 ? 'Net improvement' : score < 0 ? 'Net setback' : 'No net change'}</span></div>
     <p className="overall-score"><strong>{signed(score)}</strong> <span>points</span></p>
-    <div className="metric-track" aria-hidden="true"><i style={{ left: `${score < 0 ? 50 - width : 50}%`, width: `${width}%` }} /><b /></div>
-    <div className="metric-axis" aria-hidden="true"><span>Worse</span><span>0</span><span>Better</span></div>
-    <p className="overall-caption">Equal weight across all three stats</p>
   </section>;
 }
 const Arrow = () => <span aria-hidden="true">↗</span>;
@@ -102,7 +98,7 @@ export function App() {
 
         {state.step !== 'outcome' && <EventHistory state={state} paused={paused} reduced={reduced} />}
 
-        <section className={`interaction ${choosing ? 'response-choices' : ''} ${state.step === 'outcome' ? 'outcome-interaction' : ''}`} ref={panel} tabIndex={-1} aria-label={`${stepNames[stepIndex]} controls`}>
+        {state.step !== 'outcome' && <section className={`interaction ${choosing ? 'response-choices' : ''}`} ref={panel} tabIndex={-1} aria-label={`${stepNames[stepIndex]} controls`}>
           {state.step === 'society' && <>
             <div className="interaction-copy"><h2>{view.genesis < 1 ? 'Persona genesis' : societyReady ? 'Your audience is listening.' : 'Society is live'}</h2></div>
             <div className="actions"><button className="text-button" onClick={back}>← Change identity</button><button className="primary danger-button" disabled={!societyReady} onClick={() => { setPaused(false); dispatch({ type: 'rumour' }); }}>Introduce a rumour<Arrow /></button></div>
@@ -118,44 +114,37 @@ export function App() {
           {state.step === 'response' && state.running && <>
             <div className="interaction-copy"><h2>Observing audience reactions.</h2></div><div className="actions"><button className="text-button" onClick={back}>← Back to the rumour</button></div>
           </>}
-          {state.step === 'outcome' && <>
-            <div className="interaction-copy"><h2>{view.outcome!.insight}</h2></div><div className="actions"><button className="text-button" onClick={restart}>Start over</button><button className="primary" onClick={back}>Try another response<Arrow /></button></div>
-          </>}
-        </section>
+        </section>}
 
-        {state.step === 'outcome' && <aside className="outcome-panel" aria-label="Response outcome">
+        {state.step === 'outcome' && <aside className="outcome-panel" ref={panel} tabIndex={-1} aria-label="Response outcome">
           <span className="eyebrow">{scenario.title} · RESPONSE LAB</span>
           <h2>Compare the consequences</h2>
-          <p className="comparison-intro">Compare the impact of each response. Positive scores mean improvement; negative scores mean a setback. The center marks no change.</p>
-          <p className="belief-definition"><b>Rumour being measured:</b> {scenario.claim}</p>
+          <p className="belief-definition"><b>The rumour:</b> {scenario.claim}</p>
+          <p className="comparison-intro">Change from before your response. Positive is better; negative is worse.</p>
           <div className="comparison-grid">
-            <div className="baseline-strip"><strong>Before any response</strong>{consequenceStats.map(stat => <span key={stat.key}>{scenario.crisis[stat.key]}{stat.suffix} {stat.label.toLowerCase()}</span>)}</div>
             {outcomes.map(o => <article className={`outcome-card ${state.strategy === o.id ? 'selected-result' : ''}`} key={o.id}>
               <span className="eyebrow">{state.strategy === o.id ? 'JUST PLAYED' : state.history.includes(o.id) ? 'PREVIOUSLY PLAYED' : 'ALTERNATIVE BRANCH'}</span>
               <h3>{o.title}</h3>
-              <OverallImpact score={overallImpact(scenario.crisis, o.metrics)} scale={Math.max(100, ...outcomes.map(outcome => Math.abs(overallImpact(scenario.crisis, outcome.metrics))))} />
-              <p className="statement-quote">“{o.response}”</p>
+              <OverallImpact score={overallImpact(scenario.crisis, o.metrics)} />
               <dl>{consequenceStats.map(stat => {
                 const value = o.metrics[stat.key];
                 const baseline = scenario.crisis[stat.key];
                 const impact = baseline - value;
                 const direction = impact > 0 ? 'positive' : impact < 0 ? 'negative' : 'unchanged';
-                const scale = Math.max(100, ...outcomes.map(outcome => Math.abs(baseline - outcome.metrics[stat.key])));
-                const width = Math.abs(impact) / scale * 50;
                 return <div key={stat.key} className={`compare-metric impact-${direction}`}>
-                  <dt>{stat.label}</dt>
-                  <dd><strong>{signed(impact)} <small>{stat.unit}</small></strong><span>{impact > 0 ? 'Better' : impact < 0 ? 'Worse' : 'No change'}</span></dd>
-                  <div className="metric-track" aria-hidden="true"><i style={{left: `${impact < 0 ? 50 - width : 50}%`, width: `${width}%`}} /><b /></div>
-                  <div className="metric-axis" aria-hidden="true"><span>Worse</span><span>0</span><span>Better</span></div>
-                  <p className="metric-values">Before {baseline}{stat.suffix} → After {value}{stat.suffix}</p>
+                  <dt>{stat.label}<span className="metric-values"><span className="sr-only">Before </span>{baseline}{stat.suffix} <span aria-hidden="true">→</span><span className="sr-only"> after </span> {value}{stat.suffix}</span></dt>
+                  <dd><strong>{signed(impact)} <small>{stat.unit}</small></strong><span className="sr-only">{impact > 0 ? 'Better' : impact < 0 ? 'Worse' : 'No change'}</span></dd>
                 </div>;
               })}</dl>
               <h4>{o.insight}</h4>
-              <details><summary>Why this happened</summary><ul>{o.explanations.map(e => <li key={e}>{e}</li>)}</ul><div className="branch-reactions">{o.reactions.map((r, i) => <blockquote key={i}><strong>{r.author}</strong><p>“{r.text}”</p><small>{r.impact}</small></blockquote>)}</div></details>
+              <details><summary>Response &amp; explanation</summary><p className="statement-quote">“{o.response}”</p><ul>{o.explanations.map(e => <li key={e}>{e}</li>)}</ul><div className="branch-reactions">{o.reactions.map((r, i) => <blockquote key={i}><strong>{r.author}</strong><p>“{r.text}”</p><small>{r.impact}</small></blockquote>)}</div></details>
               <button className="text-button" onClick={() => { setPaused(false); dispatch({ type: 'replay', strategy: o.id }); }}>{state.strategy === o.id ? 'Replay reactions' : 'Watch this branch'} <Arrow /></button>
             </article>)}
           </div>
-          <p className="metric-note">Overall impact is the average of the three impact scores, rounded to one decimal. One percentage point of hostility or belief and one reach index point carry equal weight in this illustrative score. Zero means no net change; positive is better. Individual impact scores measure improvement from before the response: less hostility, less belief in the rumour and less story reach score positively. Bars start at zero and share the same scale across branches for each stat. pp = percentage points. Story reach is indexed to 100 before the response. These illustrative values demonstrate tradeoffs; they are not forecasts.</p>
+          <div className="outcome-actions">
+            <details className="score-note"><summary>How scoring works</summary><p>Overall impact averages the three changes with equal weight, rounded to one decimal. Lower hostility, rumour belief and reach score positively. pp = percentage points; reach starts at 100. Illustrative scores, not forecasts.</p></details>
+            <div className="actions"><button className="text-button" onClick={restart}>Start over</button><button className="primary" onClick={back}>Try another response<Arrow /></button></div>
+          </div>
         </aside>}
       </>}
     </main>

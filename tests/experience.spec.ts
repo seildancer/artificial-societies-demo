@@ -194,13 +194,23 @@ test('desktop: genesis, mutations, all three response journeys and comparison', 
     await expect(page.locator('.event-history')).toContainText(o.reactions[1].text);
     await expect(page.locator('.event-history')).toContainText(o.reactions[2].text);
     await expect(page.locator('.experience')).toHaveAttribute('data-step', 'outcome');
-    await expect(page.locator('.outcome-interaction').getByRole('heading', { name: o.insight })).toBeVisible();
+    await expect(page.locator('.outcome-card.selected-result').getByRole('heading', { name: o.insight })).toBeVisible();
     await expect(page.getByRole('complementary', { name: 'Response outcome' })).toContainText(`${o.metrics.belief}%`);
     await expect(page.getByRole('complementary', { name: 'Public sentiment' })).toHaveCount(0);
     await page.locator('.outcome-card.selected-result summary').click();
     await expect(page.locator('.outcome-card.selected-result .statement-quote')).toBeVisible();
     await page.locator('.outcome-card.selected-result summary').click();
+    for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 720 }, { width: 1280, height: 640 }, { width: 1024, height: 768 }]) {
+      await page.setViewportSize(viewport);
+      await expect(page.getByRole('button', { name: 'Try another response' })).toBeInViewport({ ratio: 1 });
+      expect(await page.evaluate(() => ({
+        width: document.documentElement.scrollWidth,
+        height: document.documentElement.scrollHeight,
+      }))).toEqual(viewport);
+    }
+    await page.setViewportSize({ width: 1366, height: 768 });
     await page.screenshot({ path: `test-results/outcome-${o.id}.png` });
+    await page.setViewportSize({ width: 1440, height: 960 });
     await page.getByRole('button', { name: 'Try another response' }).click();
     await expect(page.locator('.history-event')).toHaveCount(4);
     await expect(page.locator('.experience')).toHaveAttribute('data-step', 'response');
@@ -294,30 +304,21 @@ test('narrow mobile keeps the hero clear and response choices reachable', async 
   await expect(page.locator('.experience')).toHaveAttribute('data-running', 'true');
   await expect(page.locator('.experience')).toHaveAttribute('data-step', 'outcome');
   await expect(page.locator('.outcome-card')).toHaveCount(3);
-  await expect(page.locator('.baseline-strip')).toContainText('66% hostile audience');
   await expect(page.locator('.overall-score strong')).toHaveText(['-3.3', '+6.3', '+14.7']);
   await expect(page.locator('.outcome-card.selected-result .overall-impact')).toContainText('Net setback');
   const comparison = page.locator('.outcome-card.selected-result .compare-metric');
   await expect(comparison.nth(0)).toContainText('Hostile audience');
-  await expect(comparison.nth(0)).toContainText('Before 66% → After 72%');
+  await expect(comparison.nth(0)).toContainText('Before 66% → after 72%');
   await expect(comparison.nth(0)).toContainText('-6 pp');
   await expect(comparison.nth(1)).toContainText('Believe the rumour');
-  await expect(comparison.nth(1)).toContainText('Before 67% → After 38%');
+  await expect(comparison.nth(1)).toContainText('Before 67% → after 38%');
   await expect(comparison.nth(1)).toContainText('+29 pp');
   await expect(comparison.nth(2)).toContainText('Story reach index');
-  await expect(comparison.nth(2)).toContainText('Before 100 → After 133');
+  await expect(comparison.nth(2)).toContainText('Before 100 → after 133');
   await expect(comparison.nth(2)).toContainText('-33 points');
-  const bars = await comparison.evaluateAll(metrics => metrics.map(metric => {
-    const track = metric.querySelector('.metric-track')!.getBoundingClientRect();
-    const bar = metric.querySelector('.metric-track i')!.getBoundingClientRect();
-    const marker = metric.querySelector('.metric-track b')!.getBoundingClientRect();
-    return { center: track.x + track.width / 2, start: bar.x, end: bar.right, marker: marker.x + marker.width / 2 };
-  }));
-  for (const bar of bars) expect(bar.marker).toBeCloseTo(bar.center, 0);
-  expect(bars[0].start).toBeLessThan(bars[0].center);
-  expect(bars[0].end).toBeCloseTo(bars[0].center, 0);
-  expect(bars[1].start).toBeCloseTo(bars[1].center, 0);
-  expect(bars[1].end).toBeGreaterThan(bars[1].center);
+  await expect(comparison.nth(0)).toContainText('Worse');
+  await expect(comparison.nth(1)).toContainText('Better');
+  await expect(comparison.nth(2)).toContainText('Worse');
   await page.locator('.outcome-card').nth(2).getByRole('button', { name: 'Watch this branch' }).click();
   await expect(page.locator('.experience')).toHaveAttribute('data-running', 'true');
   await expect(page.locator('.history-list')).toContainText(identities[2].outcomes[2].response);
