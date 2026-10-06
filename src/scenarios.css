@@ -29,6 +29,15 @@
 .outcome-card h3 { font-size: 18px; font-weight: 500; min-height: 44px; margin: 12px 0 0; }
 .outcome-card .statement-quote { min-height: 140px; font-size: 12px; line-height: 1.65; margin-bottom: 18px; }
 .outcome-card dl { margin: 0; }
+.overall-impact { margin: 16px 0 4px; padding: 16px; border: 1px solid #ffffff20; background: #ffffff04; }
+.overall-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: 10px; }
+.overall-heading > span:first-child { color: #eee7de; font-weight: 500; }
+.overall-score { margin: 9px 0 16px; font-variant-numeric: tabular-nums; }
+.overall-score strong { font-size: 38px; font-weight: 500; line-height: 1; }
+.overall-score > span { font-size: 11px; }
+.overall-impact.impact-positive { color: #9dceb3; }
+.overall-impact.impact-negative { color: #ef8d91; }
+.overall-caption { margin: 12px 0 0; font-size: 10px; line-height: 1.5; color: #bdb3a8; }
 .compare-metric { margin-bottom: 20px; }
 .compare-metric dt { font-size: 11px; color: #bdb3a8; }
 .compare-metric dd { margin: 6px 0; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
@@ -37,6 +46,17 @@
 .metric-track { height: 4px; background: #ffffff16; position: relative; }
 .metric-track i { display: block; height: 100%; background: #b59b76; }
 .metric-track b { position: absolute; top: -3px; height: 10px; width: 2px; background: #fff; }
+.compare-metric dd strong small { font-size: 12px; font-weight: 400; }
+.compare-metric.impact-positive dd { color: #9dceb3; }
+.compare-metric.impact-negative dd { color: #ef8d91; }
+.compare-metric dd span { color: inherit; }
+.metric-track i { position: absolute; }
+.impact-positive .metric-track i { background: #9dceb3; }
+.impact-negative .metric-track i { background: #ef8d91; }
+.metric-track b { left: 50%; transform: translateX(-50%); }
+.metric-axis { display: flex; justify-content: space-between; position: relative; margin-top: 7px; color: #aba195; font-size: 9px; }
+.metric-axis span:nth-child(2) { position: absolute; left: 50%; transform: translateX(-50%); }
+.metric-values { margin: 7px 0 0; color: #bdb3a8; font-size: 10px; font-variant-numeric: tabular-nums; }
 .outcome-card h4 { font-size: 14px; line-height: 1.5; font-weight: 500; min-height: 64px; margin: 4px 0 16px; }
 .outcome-card details { font-size: 12px; line-height: 1.6; }
 .outcome-card summary { cursor: pointer; color: #d4ba8f; padding: 6px 0; }

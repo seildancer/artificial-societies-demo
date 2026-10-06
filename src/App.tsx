@@ -6,10 +6,22 @@ import { Brand } from './Brand';
 import { EventHistory } from './EventHistory';
 import { getView, initialState, reducer, type Step } from './simulation';
 import { SOCIETY_READY_AT } from './genesis';
+import { consequenceStats, overallImpact } from './consequences';
 
 const steps: Step[] = ['identity', 'society', 'rumour', 'response', 'outcome'];
 const stepNames = ['Identity', 'Society', 'Rumour', 'Response', 'Outcome'];
 const signed = (n: number) => `${n > 0 ? '+' : ''}${n}`;
+function OverallImpact({ score, scale }: { score: number; scale: number }) {
+  const direction = score > 0 ? 'positive' : score < 0 ? 'negative' : 'unchanged';
+  const width = Math.abs(score) / scale * 50;
+  return <section className={`overall-impact impact-${direction}`} aria-label="Overall impact">
+    <div className="overall-heading"><span>Overall impact</span><span>{score > 0 ? 'Net improvement' : score < 0 ? 'Net setback' : 'No net change'}</span></div>
+    <p className="overall-score"><strong>{signed(score)}</strong> <span>points</span></p>
+    <div className="metric-track" aria-hidden="true"><i style={{ left: `${score < 0 ? 50 - width : 50}%`, width: `${width}%` }} /><b /></div>
+    <div className="metric-axis" aria-hidden="true"><span>Worse</span><span>0</span><span>Better</span></div>
+    <p className="overall-caption">Equal weight across all three stats</p>
+  </section>;
+}
 const Arrow = () => <span aria-hidden="true">↗</span>;
 
 export function App() {
@@ -114,21 +126,36 @@ export function App() {
         {state.step === 'outcome' && <aside className="outcome-panel" aria-label="Response outcome">
           <span className="eyebrow">{scenario.title} · RESPONSE LAB</span>
           <h2>Compare the consequences</h2>
-          <p className="comparison-intro">One shared starting point. All three scripted branches, at the end of the same reaction sequence.</p>
+          <p className="comparison-intro">Compare the impact of each response. Positive scores mean improvement; negative scores mean a setback. The center marks no change.</p>
           <p className="belief-definition"><b>Rumour being measured:</b> {scenario.claim}</p>
           <div className="comparison-grid">
-            <div className="baseline-strip"><strong>Before any response</strong><span>{scenario.crisis.hostile}% hostile</span><span>{scenario.crisis.belief}% believe the rumour</span><span>100 reach index</span></div>
+            <div className="baseline-strip"><strong>Before any response</strong>{consequenceStats.map(stat => <span key={stat.key}>{scenario.crisis[stat.key]}{stat.suffix} {stat.label.toLowerCase()}</span>)}</div>
             {outcomes.map(o => <article className={`outcome-card ${state.strategy === o.id ? 'selected-result' : ''}`} key={o.id}>
               <span className="eyebrow">{state.strategy === o.id ? 'JUST PLAYED' : state.history.includes(o.id) ? 'PREVIOUSLY PLAYED' : 'ALTERNATIVE BRANCH'}</span>
               <h3>{o.title}</h3>
+              <OverallImpact score={overallImpact(scenario.crisis, o.metrics)} scale={Math.max(100, ...outcomes.map(outcome => Math.abs(overallImpact(scenario.crisis, outcome.metrics))))} />
               <p className="statement-quote">“{o.response}”</p>
-              <dl>{([['hostile', 'Hostile audience'], ['belief', 'Believe the rumour'], ['reach', 'Story reach index']] as const).map(([key, label]) => <div key={key} className="compare-metric"><dt>{label}</dt><dd><strong>{o.metrics[key]}{key !== 'reach' && '%'}</strong><span>{signed(o.metrics[key] - scenario.crisis[key])} {key === 'reach' ? 'index points' : 'pp'}</span></dd><div className="metric-track" aria-hidden="true"><i style={{width: `${o.metrics[key] / (key === 'reach' ? 2 : 1)}%`}} /><b style={{left: `${scenario.crisis[key] / (key === 'reach' ? 2 : 1)}%`}} /></div></div>)}</dl>
+              <dl>{consequenceStats.map(stat => {
+                const value = o.metrics[stat.key];
+                const baseline = scenario.crisis[stat.key];
+                const impact = baseline - value;
+                const direction = impact > 0 ? 'positive' : impact < 0 ? 'negative' : 'unchanged';
+                const scale = Math.max(100, ...outcomes.map(outcome => Math.abs(baseline - outcome.metrics[stat.key])));
+                const width = Math.abs(impact) / scale * 50;
+                return <div key={stat.key} className={`compare-metric impact-${direction}`}>
+                  <dt>{stat.label}</dt>
+                  <dd><strong>{signed(impact)} <small>{stat.unit}</small></strong><span>{impact > 0 ? 'Better' : impact < 0 ? 'Worse' : 'No change'}</span></dd>
+                  <div className="metric-track" aria-hidden="true"><i style={{left: `${impact < 0 ? 50 - width : 50}%`, width: `${width}%`}} /><b /></div>
+                  <div className="metric-axis" aria-hidden="true"><span>Worse</span><span>0</span><span>Better</span></div>
+                  <p className="metric-values">Before {baseline}{stat.suffix} → After {value}{stat.suffix}</p>
+                </div>;
+              })}</dl>
               <h4>{o.insight}</h4>
               <details><summary>Why this happened</summary><ul>{o.explanations.map(e => <li key={e}>{e}</li>)}</ul><div className="branch-reactions">{o.reactions.map((r, i) => <blockquote key={i}><strong>{r.author}</strong><p>“{r.text}”</p><small>{r.impact}</small></blockquote>)}</div></details>
               <button className="text-button" onClick={() => { setPaused(false); dispatch({ type: 'replay', strategy: o.id }); }}>{state.strategy === o.id ? 'Replay reactions' : 'Watch this branch'} <Arrow /></button>
             </article>)}
           </div>
-          <p className="metric-note">Changes are relative to before the response. pp = percentage points. Reach is indexed to 100, not a headcount. Markers show the shared baseline. These illustrative values demonstrate tradeoffs; they are not forecasts.</p>
+          <p className="metric-note">Overall impact is the average of the three impact scores, rounded to one decimal. One percentage point of hostility or belief and one reach index point carry equal weight in this illustrative score. Zero means no net change; positive is better. Individual impact scores measure improvement from before the response: less hostility, less belief in the rumour and less story reach score positively. Bars start at zero and share the same scale across branches for each stat. pp = percentage points. Story reach is indexed to 100 before the response. These illustrative values demonstrate tradeoffs; they are not forecasts.</p>
         </aside>}
       </>}
     </main>
